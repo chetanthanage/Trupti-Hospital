@@ -1337,12 +1337,14 @@ button{ cursor:pointer; }
 .print-schedule h1{ font-size: 1.35rem; margin: 0 0 4px; font-family: var(--font-display); }
 .print-schedule__range{ margin: 0 0 2px; font-size: 0.9rem; font-weight: 700; color: #333; }
 .print-schedule__generated{ margin: 0; font-size: 0.76rem; color: #666; }
-.print-schedule table{ width: 100%; min-width: 600px; border-collapse: collapse; }
+.print-schedule table{ width: 100%; max-width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
 .print-schedule th, .print-schedule td{
   border: 1px solid #999;
   padding: 8px 10px;
   text-align: left;
   font-size: 0.82rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .print-schedule th{ background: #eee; font-weight: 800; }
 .print-schedule tbody tr:nth-child(even){ background: #f5f5f5; }
@@ -1361,7 +1363,7 @@ button{ cursor:pointer; }
 .print-preview-frame{ margin-top: 4px; }
 
 @media print{
-  @page{ size: A4 portrait; margin: 14mm 12mm; }
+  @page{ size: 210mm 297mm; margin: 14mm 12mm; } /* explicit A4 portrait dimensions — respected more reliably than the 'portrait' keyword across browsers */
   /* display:none actually removes siblings from layout (unlike visibility:hidden,
      which keeps their full height reserved and was causing extra blank pages
      after the schedule — e.g. the whole app dashboard behind it). */
