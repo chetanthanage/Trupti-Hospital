@@ -1362,13 +1362,12 @@ button{ cursor:pointer; }
 
 @media print{
   @page{ size: A4 portrait; margin: 14mm 12mm; }
-  body *{ visibility: hidden; }
-  .print-schedule#printSchedule, .print-schedule#printSchedule *{ visibility: visible; }
-  .print-schedule#printSchedule{
-    display: block;
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%;
+  /* display:none actually removes siblings from layout (unlike visibility:hidden,
+     which keeps their full height reserved and was causing extra blank pages
+     after the schedule — e.g. the whole app dashboard behind it). */
+  body > *{ display: none !important; }
+  body > .print-schedule#printSchedule{
+    display: block !important;
     padding: 0;
   }
   .print-schedule thead{ display: table-header-group; } /* repeats the header row on every printed page */

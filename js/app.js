@@ -1333,12 +1333,14 @@ import {
   const printModalTypeSelect = document.getElementById('printModalType');
   const printModalCancelBtn = document.getElementById('printModalCancelBtn');
   const printModalPreviewBtn = document.getElementById('printModalPreviewBtn');
+  const printModalImageBtn = document.getElementById('printModalImageBtn');
   const printModalPrintBtn = document.getElementById('printModalPrintBtn');
 
   const printPreviewOverlay = document.getElementById('printPreviewOverlay');
   const printPreviewContentEl = document.getElementById('printPreviewContent');
   const printPreviewCloseBtn = document.getElementById('printPreviewCloseBtn');
   const printPreviewBackBtn = document.getElementById('printPreviewBackBtn');
+  const printPreviewImageBtn = document.getElementById('printPreviewImageBtn');
   const printPreviewPrintBtn = document.getElementById('printPreviewPrintBtn');
 
   const printScheduleEl = document.getElementById('printSchedule');
@@ -1444,6 +1446,59 @@ import {
     window.print(); // modal closes via 'afterprint' once the task actually finishes
   });
 
+  /* ---------- Save as Image (PNG snapshot of the schedule, via html2canvas) ---------- */
+  function downloadCanvasAsPng(canvas, filename) {
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  async function exportScheduleAsImage(sourceEl, filters, button) {
+    if (typeof html2canvas !== 'function') {
+      window.alert('Image export needs an internet connection the first time — please check your connection and try again.');
+      return;
+    }
+    const originalLabel = button ? button.innerHTML : null;
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Saving…';
+    }
+    try {
+      const canvas = await html2canvas(sourceEl, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const from = filters ? filters.fromIso : null;
+      const to = filters ? filters.toIso : null;
+      // Same naming convention as the CSV export, so image/CSV/(future PDF)
+      // downloads for the same range are easy to recognize together.
+      const filename = from
+        ? (from === to ? `clinic-appointments-${from}.png` : `clinic-appointments-${from}_to_${to}.png`)
+        : 'clinic-appointments.png';
+      downloadCanvasAsPng(canvas, filename);
+      logActivity('Save Schedule Image', null, from ? { from, to } : {});
+    } catch (err) {
+      console.error('Save as Image failed:', err);
+      window.alert('Could not generate the image. Please try again.');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.innerHTML = originalLabel;
+      }
+    }
+  }
+
+  printModalImageBtn.addEventListener('click', async () => {
+    const filters = readPrintFilters();
+    if (!filters) return;
+    const list = buildPrintList(filters);
+    renderScheduleInto(filters, list);
+    // #printSchedule is display:none outside preview/print, so render it
+    // off-screen (not display:none) just long enough for html2canvas to
+    // capture it, then hide it again.
+    printScheduleEl.style.cssText = 'display:block; position:fixed; top:0; left:-9999px;';
+    await exportScheduleAsImage(printScheduleEl, filters, printModalImageBtn);
+    printScheduleEl.style.cssText = '';
+  });
+
   let lastPreviewFilters = null;
 
   printModalPreviewBtn.addEventListener('click', () => {
@@ -1473,6 +1528,11 @@ import {
   printPreviewBackBtn.addEventListener('click', () => {
     closePrintPreview();
     openPrintModal();
+  });
+  printPreviewImageBtn.addEventListener('click', () => {
+    const target = printPreviewContentEl.querySelector('.print-schedule--preview');
+    if (!target) return;
+    exportScheduleAsImage(target, lastPreviewFilters, printPreviewImageBtn);
   });
   printPreviewPrintBtn.addEventListener('click', () => {
     logActivity('Print Schedule', null, lastPreviewFilters ? { from: lastPreviewFilters.fromIso, to: lastPreviewFilters.toIso } : {});
