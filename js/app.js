@@ -1342,6 +1342,7 @@ import {
   const printPreviewBackBtn = document.getElementById('printPreviewBackBtn');
   const printPreviewImageBtn = document.getElementById('printPreviewImageBtn');
   const printPreviewPrintBtn = document.getElementById('printPreviewPrintBtn');
+  const printThemeSwatches = document.getElementById('printThemeSwatches');
 
   const printScheduleEl = document.getElementById('printSchedule');
   const printScheduleTitleEl = document.getElementById('printScheduleTitle');
@@ -1464,8 +1465,24 @@ import {
       button.disabled = true;
       button.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Saving…';
     }
+    // Build an off-screen A4-portrait page (same width/margins as the
+    // printed page) and capture that, so the PNG looks like an actual
+    // portrait page rather than a tight crop of just the table.
+    const mmToPx = 96 / 25.4;
+    const pageWidth = Math.round(210 * mmToPx);   // ≈ 794px
+    const pageMinHeight = Math.round(297 * mmToPx); // ≈ 1123px
+    const marginX = Math.round(12 * mmToPx);       // ≈ 45px
+    const marginY = Math.round(14 * mmToPx);       // ≈ 53px
+
+    const pageWrap = document.createElement('div');
+    pageWrap.style.cssText = `position:fixed; top:0; left:-99999px; width:${pageWidth}px; min-height:${pageMinHeight}px; box-sizing:border-box; padding:${marginY}px ${marginX}px; background:#fff;`;
+    const clone = sourceEl.cloneNode(true);
+    clone.style.cssText = 'display:block; margin:0; padding:0; border:none; max-height:none; overflow:visible;';
+    pageWrap.appendChild(clone);
+    document.body.appendChild(pageWrap);
+
     try {
-      const canvas = await html2canvas(sourceEl, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const canvas = await html2canvas(pageWrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
       const from = filters ? filters.fromIso : null;
       const to = filters ? filters.toIso : null;
       // Same naming convention as the CSV export, so image/CSV/(future PDF)
@@ -1479,6 +1496,7 @@ import {
       console.error('Save as Image failed:', err);
       window.alert('Could not generate the image. Please try again.');
     } finally {
+      pageWrap.remove();
       if (button) {
         button.disabled = false;
         button.innerHTML = originalLabel;
@@ -1491,12 +1509,27 @@ import {
     if (!filters) return;
     const list = buildPrintList(filters);
     renderScheduleInto(filters, list);
-    // #printSchedule is display:none outside preview/print, so render it
-    // off-screen (not display:none) just long enough for html2canvas to
-    // capture it, then hide it again.
-    printScheduleEl.style.cssText = 'display:block; position:fixed; top:0; left:-9999px;';
     await exportScheduleAsImage(printScheduleEl, filters, printModalImageBtn);
-    printScheduleEl.style.cssText = '';
+  });
+
+  /* ---------- Colour theme picker (Print Preview) ---------- */
+  printThemeSwatches.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.swatch');
+    if (!swatch) return;
+    const accent = swatch.dataset.accent;
+    const accentText = swatch.dataset.text;
+    // Set on the hidden template so print, "Save as Image", and any future
+    // preview clones (cloneNode copies inline styles) all pick it up.
+    printScheduleEl.style.setProperty('--print-accent', accent);
+    printScheduleEl.style.setProperty('--print-accent-text', accentText);
+    // Also update the currently-open preview clone immediately.
+    const liveClone = printPreviewContentEl.querySelector('.print-schedule--preview');
+    if (liveClone) {
+      liveClone.style.setProperty('--print-accent', accent);
+      liveClone.style.setProperty('--print-accent-text', accentText);
+    }
+    printThemeSwatches.querySelectorAll('.swatch').forEach((s) => s.classList.remove('is-active'));
+    swatch.classList.add('is-active');
   });
 
   let lastPreviewFilters = null;

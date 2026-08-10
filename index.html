@@ -651,6 +651,18 @@
       </button>
     </div>
 
+    <div class="theme-picker">
+      <span class="theme-picker__label">Colour:</span>
+      <div class="theme-picker__swatches" id="printThemeSwatches">
+        <button class="swatch is-active" type="button" data-accent="#0f9e94" data-text="#ffffff" style="background:#0f9e94" title="Teal (matches logo)"></button>
+        <button class="swatch" type="button" data-accent="#2f6fed" data-text="#ffffff" style="background:#2f6fed" title="Blue"></button>
+        <button class="swatch" type="button" data-accent="#7c3aed" data-text="#ffffff" style="background:#7c3aed" title="Purple"></button>
+        <button class="swatch" type="button" data-accent="#e11d48" data-text="#ffffff" style="background:#e11d48" title="Rose"></button>
+        <button class="swatch" type="button" data-accent="#334155" data-text="#ffffff" style="background:#334155" title="Charcoal"></button>
+        <button class="swatch" type="button" data-accent="#f2b90c" data-text="#111111" style="background:#f2b90c" title="Amber"></button>
+      </div>
+    </div>
+
     <div class="print-preview-frame" id="printPreviewContent"></div>
 
     <div class="btn-row btn-row--modal">
@@ -698,6 +710,15 @@
     <p class="print-schedule__generated" id="printScheduleGenerated">Generated On: —</p>
   </div>
   <table id="printScheduleTable">
+    <colgroup>
+      <col style="width:9%"><!-- Date -->
+      <col style="width:10%"><!-- Time -->
+      <col style="width:19%"><!-- Patient -->
+      <col style="width:14%"><!-- Mobile -->
+      <col style="width:12%"><!-- Type -->
+      <col style="width:11%"><!-- Status -->
+      <col style="width:25%"><!-- Notes -->
+    </colgroup>
     <thead>
       <tr><th>Date</th><th>Time</th><th>Patient</th><th>Mobile</th><th>Type</th><th>Status</th><th>Notes</th></tr>
     </thead>
