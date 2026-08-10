@@ -1444,7 +1444,7 @@ import {
     const list = buildPrintList(filters);
     renderScheduleInto(filters, list);
     logActivity('Print Schedule', null, { from: filters.fromIso, to: filters.toIso });
-    window.print(); // modal closes via 'afterprint' once the task actually finishes
+    triggerPrint(); // modal closes once the task actually finishes (see triggerPrint below)
   });
 
   /* ---------- Save as Image (PNG snapshot of the schedule, via html2canvas) ---------- */
@@ -1569,17 +1569,40 @@ import {
   });
   printPreviewPrintBtn.addEventListener('click', () => {
     logActivity('Print Schedule', null, lastPreviewFilters ? { from: lastPreviewFilters.fromIso, to: lastPreviewFilters.toIso } : {});
-    window.print(); // modal closes via 'afterprint' once the task actually finishes
+    triggerPrint(); // modal closes once the task actually finishes (see triggerPrint below)
   });
 
   /* Print/print-preview popups (desktop and mobile alike) now close only
      once the print task has actually completed, rather than the moment
      printing starts — the browser's native print/share sheet handles the
-     in-between, and 'afterprint' fires when the person is done with it. */
-  window.addEventListener('afterprint', () => {
+     in-between.
+
+     'afterprint' is the primary signal, but it isn't reliable everywhere:
+     older Safari can be inconsistent, and in-app WebViews (WhatsApp,
+     Instagram, Facebook's in-app browser) frequently skip it entirely.
+     Without a fallback, the popup could get stuck open indefinitely on
+     those browsers. So this also watches the print media query directly,
+     and — as a last resort — force-closes shortly after print is
+     triggered if neither signal has fired by then. */
+  function closeAnyOpenPrintPopup() {
     if (!printModalOverlay.hidden) closePrintModal();
     if (!printPreviewOverlay.hidden) closePrintPreview();
-  });
+  }
+  window.addEventListener('afterprint', closeAnyOpenPrintPopup);
+  if (window.matchMedia) {
+    const printMq = window.matchMedia('print');
+    const handlePrintMqChange = (e) => { if (!e.matches) closeAnyOpenPrintPopup(); };
+    if (printMq.addEventListener) printMq.addEventListener('change', handlePrintMqChange);
+    else if (printMq.addListener) printMq.addListener(handlePrintMqChange); // older Safari
+  }
+
+  function triggerPrint() {
+    window.print();
+    // Safety net for browsers/WebViews that never fire 'afterprint' or a
+    // matching media-query change at all. closeAnyOpenPrintPopup() is a
+    // no-op if the popup already closed, so this is harmless either way.
+    setTimeout(closeAnyOpenPrintPopup, 3000);
+  }
 
   /* ======================================================================
      GLOBAL REFRESH
