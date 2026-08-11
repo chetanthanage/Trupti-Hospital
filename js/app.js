@@ -1209,6 +1209,7 @@ import {
     apptModalOverlay.hidden = true;
     rescheduleModalOverlay.hidden = true;
     cancelConfirmOverlay.hidden = true;
+    dayModalOverlay.hidden = true;
     patientHistoryModalOverlay.hidden = true;
     sendReminderModalOverlay.hidden = true;
   }
@@ -1989,6 +1990,7 @@ import {
       openApptModal({ mode: 'edit', appt: editTarget });
     };
     const doCall = () => {
+      closeAllActionPopups();
       window.open(`tel:${patient.mobile}`, '_self');
     };
     const doCancel = () => {
