@@ -601,8 +601,10 @@ button{ cursor:pointer; }
 .appt-card__status-note .material-symbols-rounded{ font-size: 14px; }
 
 /* ---------- Patients tab (derived from appointment records, grouped by mobile) ---------- */
-/* "Option 6 – Enhanced" patient card: condensed header + action row, with a
-   smoothly-expanding panel (Last/Next/Status + full action grid + Cancel). */
+/* Flat patient card: header (avatar, name, meta, next appointment) + a single
+   action row (Next, History, Reschedule, Remind, Edit, Cancel). Also reused
+   by the Day Detail and Patient History modals to render individual
+   appointments in the same format (see apptAsPatient() in app.js). */
 .patient-list{ display:flex; flex-direction: column; gap: 12px; }
 .patient-card{
   background: var(--color-surface-alt);
@@ -632,24 +634,10 @@ button{ cursor:pointer; }
 .patient-card__next--scheduled{ color: var(--color-success, #22C55E); }
 .patient-card__next--none{ color: var(--color-text-muted); font-weight: 500; }
 
-.patient-card__expand-btn{
-  width: 34px; height: 34px; min-width: 34px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-alt);
-  color: var(--color-text);
-  display:flex; align-items:center; justify-content:center;
-  transition: background var(--transition), transform 260ms ease;
-  flex-shrink: 0;
-}
-.patient-card__expand-btn:hover{ background: var(--color-border); }
-.patient-card__expand-btn .material-symbols-rounded{ font-size: 20px; transition: transform 260ms ease; }
-.patient-card.is-expanded .patient-card__expand-btn .material-symbols-rounded{ transform: rotate(180deg); }
-
-/* Condensed action row: icon-on-top, label-below, compact + tappable. */
+/* Action row: icon-on-top, label-below, compact + tappable. */
 .patient-actions{
   display:grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   margin-top: 12px;
 }
@@ -675,95 +663,18 @@ button{ cursor:pointer; }
 .patient-action .material-symbols-rounded{ font-size: 18px; }
 .patient-action:hover{ transform: translateY(-2px); filter: brightness(1.06); }
 .patient-action:active{ transform: translateY(0) scale(0.96); }
+.patient-action--call{ background: var(--grad-teal); box-shadow: var(--shadow-glow-teal); }
 .patient-action--next{ background: var(--grad-success); box-shadow: var(--shadow-glow-green); }
 .patient-action--view{ background: var(--grad-secondary); box-shadow: var(--shadow-glow-blue); }
 .patient-action--reschedule{ background: var(--grad-primary); box-shadow: var(--shadow-glow-purple); }
 .patient-action--reminder{ background: var(--grad-warning); box-shadow: var(--shadow-glow-orange); }
 .patient-action--edit{ background: var(--grad-cyan); box-shadow: var(--shadow-glow-cyan); }
-.patient-action--more{ background: var(--grad-grey); box-shadow: var(--shadow-glow-grey); }
+.patient-action--cancel{ background: var(--grad-danger); box-shadow: var(--shadow-glow-red); }
 .patient-action:disabled{ opacity: 0.4; cursor: not-allowed; transform:none; filter:none; }
 
 @media (max-width: 460px){
-  .patient-actions{ grid-template-columns: repeat(3, 1fr); }
+  .patient-actions{ grid-template-columns: repeat(4, 1fr); }
 }
-
-/* Expanded panel — smooth open/close via the 0fr/1fr grid-rows trick (no JS height math). */
-.patient-card__expand-wrap{
-  display:grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 280ms ease;
-}
-.patient-card__expand-wrap.is-open{ grid-template-rows: 1fr; }
-.patient-card__expand-inner{ overflow:hidden; min-height:0; }
-.patient-card__expand-content{ padding-top: 14px; }
-
-.patient-stats{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.patient-stat{
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-}
-.patient-stat--highlight{ border-color: rgba(34, 197, 94, 0.5); background: rgba(34, 197, 94, 0.08); }
-.patient-stat__label{ display:block; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-muted); margin-bottom: 3px; }
-.patient-stat__value{ display:block; font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; }
-
-.patient-actions--expanded{
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.patient-actions--expanded .patient-action{
-  flex-direction: row;
-  min-height: 44px;
-  font-size: 0.74rem;
-  padding: 10px 8px;
-}
-.patient-actions--expanded .patient-action .material-symbols-rounded{ font-size: 18px; }
-@media (max-width: 460px){
-  .patient-actions--expanded{ grid-template-columns: repeat(2, 1fr); }
-}
-
-.patient-action--cancel{
-  display:flex; align-items:center; justify-content:center; gap: 8px;
-  width: 100%;
-  margin-top: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.08);
-  color: var(--color-danger);
-  border-radius: var(--radius-pill);
-  padding: 11px 16px;
-  font-weight: 700;
-  font-size: 0.82rem;
-  transition: background var(--transition), transform var(--transition);
-}
-.patient-action--cancel:hover{ background: rgba(239, 68, 68, 0.16); }
-.patient-action--cancel:active{ transform: scale(0.98); }
-.patient-action--cancel:disabled{ opacity: 0.4; cursor: not-allowed; }
-
-/* Small popover menu for "More Options" */
-.patient-more-menu{
-  display:flex; flex-direction: column; gap: 4px;
-}
-.patient-more-menu__item{
-  display:flex; align-items:center; gap: 10px;
-  border: none;
-  background: transparent;
-  color: var(--color-text);
-  padding: 12px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 0.88rem;
-  font-weight: 600;
-  text-align:left;
-  transition: background var(--transition);
-}
-.patient-more-menu__item:hover{ background: var(--color-surface-alt); }
-.patient-more-menu__item .material-symbols-rounded{ font-size: 19px; color: var(--color-text-muted); }
-.patient-more-menu__item--disabled{ opacity: 0.45; cursor: not-allowed; }
 
 /* Send Reminder preview */
 .reminder-preview-box{

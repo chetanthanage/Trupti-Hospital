@@ -802,7 +802,7 @@ import {
       dayModalEmptyEl.hidden = false;
     } else {
       dayModalEmptyEl.hidden = true;
-      list.forEach((appt) => dayModalListEl.appendChild(renderApptCard(appt, { showActions: true })));
+      list.forEach((appt) => dayModalListEl.appendChild(renderPatientCard(apptAsPatient(appt), { nextLabel: 'Appointment' })));
     }
   }
 
@@ -1211,7 +1211,6 @@ import {
     cancelConfirmOverlay.hidden = true;
     patientHistoryModalOverlay.hidden = true;
     sendReminderModalOverlay.hidden = true;
-    moreOptionsModalOverlay.hidden = true;
   }
 
   /* ---------- View Appointments ---------- */
@@ -1230,7 +1229,7 @@ import {
 
     patientHistoryList.innerHTML = '';
     patientHistoryEmpty.hidden = appts.length > 0;
-    appts.forEach((a) => patientHistoryList.appendChild(renderApptCard(a, { showDate: true, showActions: true })));
+    appts.forEach((a) => patientHistoryList.appendChild(renderPatientCard(apptAsPatient(a), { showDate: true, nextLabel: 'Appointment' })));
     patientHistoryModalOverlay.hidden = false;
   }
 
@@ -1281,61 +1280,6 @@ import {
     closeSendReminderModal();
     showToast('Reminder sent successfully.');
   });
-
-  /* ---------- More Options ---------- */
-  const moreOptionsModalOverlay = document.getElementById('moreOptionsModalOverlay');
-  const moreOptionsModalTitle = document.getElementById('moreOptionsModalTitle');
-  const moreOptionsMenu = document.getElementById('moreOptionsMenu');
-  const moreOptionsCloseBtn = document.getElementById('moreOptionsCloseBtn');
-
-  function closeMoreOptionsModal() {
-    moreOptionsModalOverlay.hidden = true;
-  }
-
-  moreOptionsCloseBtn.addEventListener('click', closeMoreOptionsModal);
-  moreOptionsModalOverlay.addEventListener('click', (e) => {
-    if (e.target === moreOptionsModalOverlay) closeMoreOptionsModal();
-  });
-
-  function openMoreOptionsModal(patient) {
-    closeAllActionPopups();
-    moreOptionsModalTitle.textContent = `${patient.title} ${patient.name}`;
-    moreOptionsMenu.innerHTML = '';
-
-    const makeItem = (icon, label, onClick, disabled) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'patient-more-menu__item' + (disabled ? ' patient-more-menu__item--disabled' : '');
-      btn.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${escapeHtml(label)}</span>`;
-      if (!disabled) btn.addEventListener('click', onClick);
-      else btn.disabled = true;
-      return btn;
-    };
-
-    moreOptionsMenu.appendChild(makeItem('call', 'Call Patient', () => {
-      window.open(`tel:${patient.mobile}`, '_self');
-      closeMoreOptionsModal();
-    }));
-
-    moreOptionsMenu.appendChild(makeItem('content_copy', 'Copy Phone Number', () => {
-      copyToClipboard(patient.mobile);
-      showToast('Phone number copied.');
-      closeMoreOptionsModal();
-    }));
-
-    const notesSource = patient.nextAppt || patient.lastAppt;
-    const hasNotes = !!(notesSource && notesSource.notes);
-    moreOptionsMenu.appendChild(makeItem(
-      'sticky_note_2',
-      hasNotes ? 'View Latest Notes' : 'No Notes Available',
-      () => {
-        moreOptionsMenu.innerHTML = `<p class="modal__message" style="text-align:left;">${escapeHtml(notesSource.notes)}</p>`;
-      },
-      !hasNotes
-    ));
-
-    moreOptionsModalOverlay.hidden = false;
-  }
 
   /* ---------- Cancel Appointment (direct from patient card) ---------- */
   function cancelPatientAppointment(appt) {
@@ -1918,10 +1862,20 @@ import {
     return btn;
   }
 
-  function renderPatientCard(patient) {
+  /** Wraps a single appointment record in a patient-shaped object so
+   *  renderPatientCard can render individual appointments (Day Detail
+   *  modal, Patient History modal) with the same look and actions as the
+   *  Patients tab, instead of the old appt-card format. */
+  function apptAsPatient(appt) {
+    return { title: appt.title, name: appt.name, mobile: appt.mobile, nextAppt: appt, lastAppt: null };
+  }
+
+  function renderPatientCard(patient, opts) {
+    opts = opts || {};
     const hasNext = !!patient.nextAppt;
     const editTarget = patient.nextAppt || patient.lastAppt;
     const isToday = hasNext && patient.nextAppt.date === isoDate(dateOffset(0));
+    const isCancelled = hasNext && (patient.nextAppt.status || 'scheduled') === 'cancelled';
 
     const card = document.createElement('div');
     card.className = 'patient-card';
@@ -1967,29 +1921,48 @@ import {
       metaHtml += `<span><span class="material-symbols-rounded">schedule</span>${formatTime12h(patient.nextAppt.time)}</span>`;
     }
     metaHtml += `<span><span class="material-symbols-rounded">phone</span>${escapeHtml(patient.mobile)}</span>`;
+    if (opts.showDate && hasNext) {
+      metaHtml += `<span><span class="material-symbols-rounded">event</span>${formatDateInputValue(patient.nextAppt.date)}</span>`;
+    }
     metaRow.innerHTML = metaHtml;
     info.appendChild(metaRow);
 
+    const nextLabel = opts.nextLabel || 'Next Appointment';
     const nextEl = document.createElement('span');
     if (hasNext) {
       nextEl.className = 'patient-card__next patient-card__next--scheduled';
-      nextEl.textContent = `Next Appointment: ${formatDateInputValue(patient.nextAppt.date)}, ${formatTime12h(patient.nextAppt.time)}`;
+      nextEl.textContent = `${nextLabel}: ${formatDateInputValue(patient.nextAppt.date)}, ${formatTime12h(patient.nextAppt.time)}`;
     } else {
       nextEl.className = 'patient-card__next patient-card__next--none';
-      nextEl.textContent = 'Next Appointment: Not Scheduled';
+      nextEl.textContent = `${nextLabel}: Not Scheduled`;
     }
     info.appendChild(nextEl);
 
-    const expandBtn = document.createElement('button');
-    expandBtn.type = 'button';
-    expandBtn.className = 'patient-card__expand-btn';
-    expandBtn.setAttribute('aria-label', `Expand details for ${patient.name}`);
-    expandBtn.setAttribute('aria-expanded', 'false');
-    expandBtn.innerHTML = '<span class="material-symbols-rounded">expand_more</span>';
+    if (hasNext && patient.nextAppt.notes) {
+      const notesEl = document.createElement('span');
+      notesEl.className = 'appt-card__notes';
+      notesEl.textContent = '📝 ' + patient.nextAppt.notes;
+      info.appendChild(notesEl);
+    }
+
+    if (isCancelled && patient.nextAppt.cancellationReason) {
+      const reasonEl = document.createElement('span');
+      reasonEl.className = 'appt-card__status-note';
+      reasonEl.innerHTML = '<span class="material-symbols-rounded">event_busy</span>Reason: ' + escapeHtml(patient.nextAppt.cancellationReason);
+      info.appendChild(reasonEl);
+    }
+    if (hasNext && patient.nextAppt.status === 'rescheduled' && Array.isArray(patient.nextAppt.history) && patient.nextAppt.history.length > 0) {
+      const prev = patient.nextAppt.history[patient.nextAppt.history.length - 1];
+      const rescheduleEl = document.createElement('span');
+      rescheduleEl.className = 'appt-card__status-note';
+      rescheduleEl.innerHTML =
+        '<span class="material-symbols-rounded">event_repeat</span>Rescheduled from ' +
+        formatDateInputValue(prev.date) + ' · ' + formatTime12h(prev.time);
+      info.appendChild(rescheduleEl);
+    }
 
     header.appendChild(avatar);
     header.appendChild(info);
-    header.appendChild(expandBtn);
     card.appendChild(header);
 
     /* ---------- Shared action handlers ---------- */
@@ -2015,75 +1988,25 @@ import {
       closeAllActionPopups();
       openApptModal({ mode: 'edit', appt: editTarget });
     };
-    const doMore = () => openMoreOptionsModal(patient);
+    const doCall = () => {
+      window.open(`tel:${patient.mobile}`, '_self');
+    };
     const doCancel = () => {
       if (!hasNext) { showToast('No upcoming appointment to cancel.'); return; }
       cancelPatientAppointment(patient.nextAppt);
     };
 
-    /* ---------- Condensed action row ---------- */
+    /* ---------- Action row ---------- */
     const actions = document.createElement('div');
     actions.className = 'patient-actions';
+    actions.appendChild(buildPatientActionBtn({ icon: 'call', label: 'Call', variant: 'call', onClick: doCall }));
     actions.appendChild(buildPatientActionBtn({ icon: 'event_upcoming', label: hasNext ? 'Next Appt' : 'Schedule', variant: 'next', onClick: doNextAppointment }));
     actions.appendChild(buildPatientActionBtn({ icon: 'list_alt', label: 'History', variant: 'view', onClick: doViewAppointments }));
-    actions.appendChild(buildPatientActionBtn({ icon: 'event_repeat', label: 'Reschedule', variant: 'reschedule', onClick: doReschedule, disabled: !hasNext }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'event_repeat', label: 'Reschedule', variant: 'reschedule', onClick: doReschedule, disabled: !hasNext || isCancelled }));
     actions.appendChild(buildPatientActionBtn({ icon: 'notifications', label: 'Remind', variant: 'reminder', onClick: doSendReminder, disabled: !hasNext }));
     actions.appendChild(buildPatientActionBtn({ icon: 'edit', label: 'Edit', variant: 'edit', onClick: doEdit }));
-    actions.appendChild(buildPatientActionBtn({ icon: 'more_horiz', label: 'More', variant: 'more', onClick: doMore }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'event_busy', label: 'Cancel', variant: 'cancel', onClick: doCancel, disabled: !hasNext || isCancelled }));
     card.appendChild(actions);
-
-    /* ---------- Expanded panel ---------- */
-    const expandWrap = document.createElement('div');
-    expandWrap.className = 'patient-card__expand-wrap';
-    const expandInner = document.createElement('div');
-    expandInner.className = 'patient-card__expand-inner';
-    const expandContent = document.createElement('div');
-    expandContent.className = 'patient-card__expand-content';
-
-    const stats = document.createElement('div');
-    stats.className = 'patient-stats';
-    stats.innerHTML = `
-      <div class="patient-stat">
-        <span class="patient-stat__label">Last Appointment</span>
-        <span class="patient-stat__value">${patient.lastAppt ? `${escapeHtml(formatDateInputValue(patient.lastAppt.date))}<br>${escapeHtml(formatTime12h(patient.lastAppt.time))}` : '—'}</span>
-      </div>
-      <div class="patient-stat patient-stat--highlight">
-        <span class="patient-stat__label">Next Appointment</span>
-        <span class="patient-stat__value">${hasNext ? `${escapeHtml(formatDateInputValue(patient.nextAppt.date))}<br>${escapeHtml(formatTime12h(patient.nextAppt.time))}` : 'Not Scheduled'}</span>
-      </div>
-      <div class="patient-stat">
-        <span class="patient-stat__label">Status</span>
-        <span class="patient-stat__value">${hasNext ? escapeHtml((STATUS_META[patient.nextAppt.status || 'scheduled'] || {}).label || 'Scheduled') : '—'}</span>
-      </div>`;
-    expandContent.appendChild(stats);
-
-    const expandedActions = document.createElement('div');
-    expandedActions.className = 'patient-actions patient-actions--expanded';
-    expandedActions.appendChild(buildPatientActionBtn({ icon: 'event_upcoming', label: hasNext ? 'Next Appointment' : 'Schedule Appointment', variant: 'next', onClick: doNextAppointment }));
-    expandedActions.appendChild(buildPatientActionBtn({ icon: 'list_alt', label: 'View Appointments', variant: 'view', onClick: doViewAppointments }));
-    expandedActions.appendChild(buildPatientActionBtn({ icon: 'event_repeat', label: 'Reschedule', variant: 'reschedule', onClick: doReschedule, disabled: !hasNext }));
-    expandedActions.appendChild(buildPatientActionBtn({ icon: 'notifications', label: 'Send Reminder', variant: 'reminder', onClick: doSendReminder, disabled: !hasNext }));
-    expandedActions.appendChild(buildPatientActionBtn({ icon: 'edit', label: 'Edit Patient', variant: 'edit', onClick: doEdit }));
-    expandedActions.appendChild(buildPatientActionBtn({ icon: 'more_horiz', label: 'More Options', variant: 'more', onClick: doMore }));
-    expandContent.appendChild(expandedActions);
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button';
-    cancelBtn.className = 'patient-action--cancel';
-    cancelBtn.innerHTML = '<span class="material-symbols-rounded">delete_forever</span> Cancel Appointment';
-    cancelBtn.disabled = !hasNext;
-    cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); doCancel(); });
-    expandContent.appendChild(cancelBtn);
-
-    expandInner.appendChild(expandContent);
-    expandWrap.appendChild(expandInner);
-    card.appendChild(expandWrap);
-
-    expandBtn.addEventListener('click', () => {
-      const isOpen = expandWrap.classList.toggle('is-open');
-      card.classList.toggle('is-expanded', isOpen);
-      expandBtn.setAttribute('aria-expanded', String(isOpen));
-    });
 
     return card;
   }
