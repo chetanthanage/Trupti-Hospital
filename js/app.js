@@ -1197,6 +1197,171 @@ import {
   });
 
   /* ======================================================================
+     PATIENT CARD POPUPS — View Appointments / Send Reminder / More Options /
+     Cancel (direct). These reuse the same DataStore, WhatsApp, toast and
+     undo plumbing as the modals above; they just give the Patients tab its
+     own dedicated entry points so only one popup is ever on screen at once.
+     ====================================================================== */
+
+  /** Closes every popup that can be reached from a patient card, so opening
+   *  a new one never stacks on top of an old one. */
+  function closeAllActionPopups() {
+    apptModalOverlay.hidden = true;
+    rescheduleModalOverlay.hidden = true;
+    cancelConfirmOverlay.hidden = true;
+    patientHistoryModalOverlay.hidden = true;
+    sendReminderModalOverlay.hidden = true;
+    moreOptionsModalOverlay.hidden = true;
+  }
+
+  /* ---------- View Appointments ---------- */
+  const patientHistoryModalOverlay = document.getElementById('patientHistoryModalOverlay');
+  const patientHistoryModalTitle = document.getElementById('patientHistoryModalTitle');
+  const patientHistoryList = document.getElementById('patientHistoryList');
+  const patientHistoryEmpty = document.getElementById('patientHistoryEmpty');
+  const patientHistoryCloseBtn = document.getElementById('patientHistoryCloseBtn');
+
+  function openPatientHistoryModal(patient) {
+    closeAllActionPopups();
+    patientHistoryModalTitle.textContent = `${patient.title} ${patient.name} — Appointments`;
+    const appts = DataStore.getAll()
+      .filter((a) => (a.mobile || '').trim() === patient.mobile)
+      .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+
+    patientHistoryList.innerHTML = '';
+    patientHistoryEmpty.hidden = appts.length > 0;
+    appts.forEach((a) => patientHistoryList.appendChild(renderApptCard(a, { showDate: true, showActions: true })));
+    patientHistoryModalOverlay.hidden = false;
+  }
+
+  function closePatientHistoryModal() {
+    patientHistoryModalOverlay.hidden = true;
+  }
+
+  patientHistoryCloseBtn.addEventListener('click', closePatientHistoryModal);
+  patientHistoryModalOverlay.addEventListener('click', (e) => {
+    if (e.target === patientHistoryModalOverlay) closePatientHistoryModal();
+  });
+
+  /* ---------- Send Reminder ---------- */
+  const sendReminderModalOverlay = document.getElementById('sendReminderModalOverlay');
+  const sendReminderName = document.getElementById('sendReminderName');
+  const sendReminderDateTime = document.getElementById('sendReminderDateTime');
+  const sendReminderPreview = document.getElementById('sendReminderPreview');
+  const sendReminderCancelBtn = document.getElementById('sendReminderCancelBtn');
+  const sendReminderSendBtn = document.getElementById('sendReminderSendBtn');
+
+  let pendingReminderAppt = null;
+
+  function openSendReminderModal(appt) {
+    closeAllActionPopups();
+    pendingReminderAppt = appt;
+    sendReminderName.textContent = `${appt.title} ${appt.name}`;
+    sendReminderDateTime.textContent = `${formatDateInputValue(appt.date)} · ${formatTime12h(appt.time)}`;
+    sendReminderPreview.value = generateAppointmentMessage(appt);
+    sendReminderModalOverlay.hidden = false;
+  }
+
+  function closeSendReminderModal() {
+    sendReminderModalOverlay.hidden = true;
+    pendingReminderAppt = null;
+  }
+
+  sendReminderCancelBtn.addEventListener('click', closeSendReminderModal);
+  sendReminderModalOverlay.addEventListener('click', (e) => {
+    if (e.target === sendReminderModalOverlay) closeSendReminderModal();
+  });
+
+  sendReminderSendBtn.addEventListener('click', () => {
+    const message = sendReminderPreview.value.trim();
+    if (!message || !pendingReminderAppt) return; // validation failure — keep popup open
+    const appt = pendingReminderAppt;
+    openWhatsApp(appt.mobile, message);
+    logActivity('Reminder Sent', appt.id);
+    closeSendReminderModal();
+    showToast('Reminder sent successfully.');
+  });
+
+  /* ---------- More Options ---------- */
+  const moreOptionsModalOverlay = document.getElementById('moreOptionsModalOverlay');
+  const moreOptionsModalTitle = document.getElementById('moreOptionsModalTitle');
+  const moreOptionsMenu = document.getElementById('moreOptionsMenu');
+  const moreOptionsCloseBtn = document.getElementById('moreOptionsCloseBtn');
+
+  function closeMoreOptionsModal() {
+    moreOptionsModalOverlay.hidden = true;
+  }
+
+  moreOptionsCloseBtn.addEventListener('click', closeMoreOptionsModal);
+  moreOptionsModalOverlay.addEventListener('click', (e) => {
+    if (e.target === moreOptionsModalOverlay) closeMoreOptionsModal();
+  });
+
+  function openMoreOptionsModal(patient) {
+    closeAllActionPopups();
+    moreOptionsModalTitle.textContent = `${patient.title} ${patient.name}`;
+    moreOptionsMenu.innerHTML = '';
+
+    const makeItem = (icon, label, onClick, disabled) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'patient-more-menu__item' + (disabled ? ' patient-more-menu__item--disabled' : '');
+      btn.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${escapeHtml(label)}</span>`;
+      if (!disabled) btn.addEventListener('click', onClick);
+      else btn.disabled = true;
+      return btn;
+    };
+
+    moreOptionsMenu.appendChild(makeItem('call', 'Call Patient', () => {
+      window.open(`tel:${patient.mobile}`, '_self');
+      closeMoreOptionsModal();
+    }));
+
+    moreOptionsMenu.appendChild(makeItem('content_copy', 'Copy Phone Number', () => {
+      copyToClipboard(patient.mobile);
+      showToast('Phone number copied.');
+      closeMoreOptionsModal();
+    }));
+
+    const notesSource = patient.nextAppt || patient.lastAppt;
+    const hasNotes = !!(notesSource && notesSource.notes);
+    moreOptionsMenu.appendChild(makeItem(
+      'sticky_note_2',
+      hasNotes ? 'View Latest Notes' : 'No Notes Available',
+      () => {
+        moreOptionsMenu.innerHTML = `<p class="modal__message" style="text-align:left;">${escapeHtml(notesSource.notes)}</p>`;
+      },
+      !hasNotes
+    ));
+
+    moreOptionsModalOverlay.hidden = false;
+  }
+
+  /* ---------- Cancel Appointment (direct from patient card) ---------- */
+  function cancelPatientAppointment(appt) {
+    closeAllActionPopups();
+    openCancelConfirmDialog({
+      name: `${appt.title} ${appt.name}`,
+      date: appt.date,
+      time: appt.time,
+      onConfirm: (reason) => {
+        const snapshot = DataStore.getById(appt.id);
+        DataStore.update(appt.id, {
+          status: 'cancelled',
+          cancelledAt: new Date().toISOString(),
+          cancellationReason: reason
+        });
+        logActivity('Appointment Cancelled', appt.id, { reason });
+        refreshEverything();
+        if (!dayModalOverlay.hidden) renderDayModalList();
+        openWhatsApp(appt.mobile, generateCancellationMessage(appt, reason));
+        scheduleUndo('Appointment cancelled successfully.', 'replace', appt.id, snapshot);
+        showToast('Appointment cancelled successfully.');
+      }
+    });
+  }
+
+  /* ======================================================================
      DOCTOR REMINDER TAB (auto-read only, no manual entry)
      ====================================================================== */
 
@@ -1735,9 +1900,35 @@ import {
     return patients;
   }
 
+  /** Builds one action button (used for both the condensed row and the
+   *  expanded grid) so the two stay behaviourally identical. */
+  function buildPatientActionBtn({ icon, label, variant, onClick, disabled, expanded }) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `patient-action patient-action--${variant}`;
+    btn.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${escapeHtml(label)}</span>`;
+    if (disabled) {
+      btn.disabled = true;
+    } else {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClick();
+      });
+    }
+    return btn;
+  }
+
   function renderPatientCard(patient) {
+    const hasNext = !!patient.nextAppt;
+    const editTarget = patient.nextAppt || patient.lastAppt;
+    const isToday = hasNext && patient.nextAppt.date === isoDate(dateOffset(0));
+
     const card = document.createElement('div');
     card.className = 'patient-card';
+
+    /* ---------- Header: avatar, name, type/today chips, time + phone ---------- */
+    const header = document.createElement('div');
+    header.className = 'patient-card__header';
 
     const avatar = document.createElement('span');
     avatar.className = 'patient-card__avatar';
@@ -1752,19 +1943,35 @@ import {
     nameSpan.className = 'patient-card__name';
     nameSpan.textContent = `${patient.title} ${patient.name}`;
     nameRow.appendChild(nameSpan);
+
+    if (hasNext) {
+      const meta = TYPE_META[patient.nextAppt.type] || TYPE_META.counselling;
+      const typeChip = document.createElement('span');
+      typeChip.className = `chip chip--${meta.color}`;
+      typeChip.textContent = meta.label;
+      nameRow.appendChild(typeChip);
+
+      if (isToday) {
+        const todayChip = document.createElement('span');
+        todayChip.className = 'chip chip--today';
+        todayChip.textContent = 'Today';
+        nameRow.appendChild(todayChip);
+      }
+    }
     info.appendChild(nameRow);
 
     const metaRow = document.createElement('span');
     metaRow.className = 'patient-card__meta';
-    let metaHtml = `<span><span class="material-symbols-rounded">phone</span>${escapeHtml(patient.mobile)}</span>`;
-    metaHtml += patient.lastAppt
-      ? `<span><span class="material-symbols-rounded">history</span>Last: ${formatDateInputValue(patient.lastAppt.date)}</span>`
-      : `<span><span class="material-symbols-rounded">history</span>Last: —</span>`;
+    let metaHtml = '';
+    if (hasNext) {
+      metaHtml += `<span><span class="material-symbols-rounded">schedule</span>${formatTime12h(patient.nextAppt.time)}</span>`;
+    }
+    metaHtml += `<span><span class="material-symbols-rounded">phone</span>${escapeHtml(patient.mobile)}</span>`;
     metaRow.innerHTML = metaHtml;
     info.appendChild(metaRow);
 
     const nextEl = document.createElement('span');
-    if (patient.nextAppt) {
+    if (hasNext) {
       nextEl.className = 'patient-card__next patient-card__next--scheduled';
       nextEl.textContent = `Next Appointment: ${formatDateInputValue(patient.nextAppt.date)}, ${formatTime12h(patient.nextAppt.time)}`;
     } else {
@@ -1773,28 +1980,110 @@ import {
     }
     info.appendChild(nextEl);
 
-    card.appendChild(avatar);
-    card.appendChild(info);
+    const expandBtn = document.createElement('button');
+    expandBtn.type = 'button';
+    expandBtn.className = 'patient-card__expand-btn';
+    expandBtn.setAttribute('aria-label', `Expand details for ${patient.name}`);
+    expandBtn.setAttribute('aria-expanded', 'false');
+    expandBtn.innerHTML = '<span class="material-symbols-rounded">expand_more</span>';
 
+    header.appendChild(avatar);
+    header.appendChild(info);
+    header.appendChild(expandBtn);
+    card.appendChild(header);
+
+    /* ---------- Shared action handlers ---------- */
+    const doNextAppointment = () => {
+      closeAllActionPopups();
+      if (hasNext) {
+        openApptModal({ mode: 'edit', appt: patient.nextAppt });
+      } else {
+        openApptModal({ mode: 'add', prefill: { name: patient.name, mobile: patient.mobile } });
+      }
+    };
+    const doViewAppointments = () => openPatientHistoryModal(patient);
+    const doReschedule = () => {
+      if (!hasNext) { showToast('No upcoming appointment to reschedule.'); return; }
+      closeAllActionPopups();
+      openRescheduleModal(patient.nextAppt);
+    };
+    const doSendReminder = () => {
+      if (!hasNext) { showToast('No upcoming appointment to remind about.'); return; }
+      openSendReminderModal(patient.nextAppt);
+    };
+    const doEdit = () => {
+      closeAllActionPopups();
+      openApptModal({ mode: 'edit', appt: editTarget });
+    };
+    const doMore = () => openMoreOptionsModal(patient);
+    const doCancel = () => {
+      if (!hasNext) { showToast('No upcoming appointment to cancel.'); return; }
+      cancelPatientAppointment(patient.nextAppt);
+    };
+
+    /* ---------- Condensed action row ---------- */
     const actions = document.createElement('div');
-    actions.className = 'patient-card__actions';
-    const actionBtn = document.createElement('button');
-    if (patient.nextAppt) {
-      actionBtn.className = 'btn btn--blue btn--sm';
-      actionBtn.type = 'button';
-      actionBtn.innerHTML = '<span class="material-symbols-rounded">event</span> Next Appointment';
-      actionBtn.addEventListener('click', () => openApptModal({ mode: 'edit', appt: patient.nextAppt }));
-    } else {
-      actionBtn.className = 'btn btn--green btn--sm';
-      actionBtn.type = 'button';
-      actionBtn.innerHTML = '<span class="material-symbols-rounded">add</span> Schedule Next Appointment';
-      actionBtn.addEventListener('click', () => openApptModal({
-        mode: 'add',
-        prefill: { name: patient.name, mobile: patient.mobile }
-      }));
-    }
-    actions.appendChild(actionBtn);
+    actions.className = 'patient-actions';
+    actions.appendChild(buildPatientActionBtn({ icon: 'event_upcoming', label: hasNext ? 'Next Appt' : 'Schedule', variant: 'next', onClick: doNextAppointment }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'list_alt', label: 'History', variant: 'view', onClick: doViewAppointments }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'event_repeat', label: 'Reschedule', variant: 'reschedule', onClick: doReschedule, disabled: !hasNext }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'notifications', label: 'Remind', variant: 'reminder', onClick: doSendReminder, disabled: !hasNext }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'edit', label: 'Edit', variant: 'edit', onClick: doEdit }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'more_horiz', label: 'More', variant: 'more', onClick: doMore }));
     card.appendChild(actions);
+
+    /* ---------- Expanded panel ---------- */
+    const expandWrap = document.createElement('div');
+    expandWrap.className = 'patient-card__expand-wrap';
+    const expandInner = document.createElement('div');
+    expandInner.className = 'patient-card__expand-inner';
+    const expandContent = document.createElement('div');
+    expandContent.className = 'patient-card__expand-content';
+
+    const stats = document.createElement('div');
+    stats.className = 'patient-stats';
+    stats.innerHTML = `
+      <div class="patient-stat">
+        <span class="patient-stat__label">Last Appointment</span>
+        <span class="patient-stat__value">${patient.lastAppt ? `${escapeHtml(formatDateInputValue(patient.lastAppt.date))}<br>${escapeHtml(formatTime12h(patient.lastAppt.time))}` : '—'}</span>
+      </div>
+      <div class="patient-stat patient-stat--highlight">
+        <span class="patient-stat__label">Next Appointment</span>
+        <span class="patient-stat__value">${hasNext ? `${escapeHtml(formatDateInputValue(patient.nextAppt.date))}<br>${escapeHtml(formatTime12h(patient.nextAppt.time))}` : 'Not Scheduled'}</span>
+      </div>
+      <div class="patient-stat">
+        <span class="patient-stat__label">Status</span>
+        <span class="patient-stat__value">${hasNext ? escapeHtml((STATUS_META[patient.nextAppt.status || 'scheduled'] || {}).label || 'Scheduled') : '—'}</span>
+      </div>`;
+    expandContent.appendChild(stats);
+
+    const expandedActions = document.createElement('div');
+    expandedActions.className = 'patient-actions patient-actions--expanded';
+    expandedActions.appendChild(buildPatientActionBtn({ icon: 'event_upcoming', label: hasNext ? 'Next Appointment' : 'Schedule Appointment', variant: 'next', onClick: doNextAppointment }));
+    expandedActions.appendChild(buildPatientActionBtn({ icon: 'list_alt', label: 'View Appointments', variant: 'view', onClick: doViewAppointments }));
+    expandedActions.appendChild(buildPatientActionBtn({ icon: 'event_repeat', label: 'Reschedule', variant: 'reschedule', onClick: doReschedule, disabled: !hasNext }));
+    expandedActions.appendChild(buildPatientActionBtn({ icon: 'notifications', label: 'Send Reminder', variant: 'reminder', onClick: doSendReminder, disabled: !hasNext }));
+    expandedActions.appendChild(buildPatientActionBtn({ icon: 'edit', label: 'Edit Patient', variant: 'edit', onClick: doEdit }));
+    expandedActions.appendChild(buildPatientActionBtn({ icon: 'more_horiz', label: 'More Options', variant: 'more', onClick: doMore }));
+    expandContent.appendChild(expandedActions);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'patient-action--cancel';
+    cancelBtn.innerHTML = '<span class="material-symbols-rounded">delete_forever</span> Cancel Appointment';
+    cancelBtn.disabled = !hasNext;
+    cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); doCancel(); });
+    expandContent.appendChild(cancelBtn);
+
+    expandInner.appendChild(expandContent);
+    expandWrap.appendChild(expandInner);
+    card.appendChild(expandWrap);
+
+    expandBtn.addEventListener('click', () => {
+      const isOpen = expandWrap.classList.toggle('is-open');
+      card.classList.toggle('is-expanded', isOpen);
+      expandBtn.setAttribute('aria-expanded', String(isOpen));
+    });
 
     return card;
   }

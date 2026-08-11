@@ -564,6 +564,57 @@
   </div>
 </div>
 
+<!-- ============ PATIENT: VIEW APPOINTMENTS MODAL ============ -->
+<div class="modal-overlay" id="patientHistoryModalOverlay" hidden>
+  <div class="modal modal--wide glass" role="dialog" aria-modal="true" aria-labelledby="patientHistoryModalTitle">
+    <div class="modal__header-row">
+      <h3 class="modal__title" id="patientHistoryModalTitle">Patient Appointments</h3>
+      <button class="icon-btn" id="patientHistoryCloseBtn" type="button" aria-label="Close">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="appt-list appt-list--modal" id="patientHistoryList"></div>
+    <p class="empty-state" id="patientHistoryEmpty" hidden>
+      <span class="material-symbols-rounded empty-state__icon">event_busy</span>
+      No appointments found for this patient.
+    </p>
+  </div>
+</div>
+
+<!-- ============ PATIENT: SEND REMINDER MODAL ============ -->
+<div class="modal-overlay" id="sendReminderModalOverlay" hidden>
+  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="sendReminderModalTitle">
+    <h3 class="modal__title" id="sendReminderModalTitle">Send Reminder</h3>
+    <div class="cancel-confirm__patient">
+      <span class="cancel-confirm__name" id="sendReminderName">Patient Name</span>
+      <span class="cancel-confirm__datetime" id="sendReminderDateTime">Date · Time</span>
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label class="field__label" for="sendReminderPreview">Message Preview (editable)</label>
+      <textarea class="reminder-preview-box" id="sendReminderPreview" rows="10"></textarea>
+    </div>
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="sendReminderCancelBtn" type="button">Cancel</button>
+      <button class="btn btn--orange" id="sendReminderSendBtn" type="button">
+        <span class="material-symbols-rounded">send</span> Send Reminder
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PATIENT: MORE OPTIONS MODAL ============ -->
+<div class="modal-overlay" id="moreOptionsModalOverlay" hidden>
+  <div class="modal modal--confirm glass" role="dialog" aria-modal="true" aria-labelledby="moreOptionsModalTitle">
+    <div class="modal__header-row">
+      <h3 class="modal__title" id="moreOptionsModalTitle">More Options</h3>
+      <button class="icon-btn" id="moreOptionsCloseBtn" type="button" aria-label="Close">
+        <span class="material-symbols-rounded">close</span>
+      </button>
+    </div>
+    <div class="patient-more-menu" id="moreOptionsMenu"></div>
+  </div>
+</div>
+
 <!-- ============ EXPORT CSV MODAL ============ -->
 <div class="modal-overlay" id="exportModalOverlay" hidden>
   <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
