@@ -205,15 +205,18 @@ import {
   const tabBtnCalendar = document.getElementById('tabBtnCalendar');
   const tabBtnReminder = document.getElementById('tabBtnReminder');
   const tabBtnAll = document.getElementById('tabBtnAll');
+  const tabBtnPatients = document.getElementById('tabBtnPatients');
   const panelCalendar = document.getElementById('panelCalendar');
   const panelReminder = document.getElementById('panelReminder');
   const panelAll = document.getElementById('panelAll');
+  const panelPatients = document.getElementById('panelPatients');
 
   function activateTab(which) {
     const map = {
       calendar: [tabBtnCalendar, panelCalendar],
       reminder: [tabBtnReminder, panelReminder],
-      all: [tabBtnAll, panelAll]
+      all: [tabBtnAll, panelAll],
+      patients: [tabBtnPatients, panelPatients]
     };
     Object.keys(map).forEach((key) => {
       const [btn, panel] = map[key];
@@ -228,6 +231,7 @@ import {
   tabBtnCalendar.addEventListener('click', () => activateTab('calendar'));
   tabBtnReminder.addEventListener('click', () => activateTab('reminder'));
   tabBtnAll.addEventListener('click', () => activateTab('all'));
+  tabBtnPatients.addEventListener('click', () => activateTab('patients'));
 
   /* ======================================================================
      THEME (DARK MODE)
@@ -808,6 +812,9 @@ import {
   const apptModalOverlay = document.getElementById('apptModalOverlay');
   const apptModalTitleEl = document.getElementById('apptModalTitle');
   const apptModalDateLabelEl = document.getElementById('apptModalDateLabel');
+  const apptModalDateFieldEl = document.getElementById('apptModalDateField');
+  const apptModalDateInputEl = document.getElementById('apptModalDateInput');
+  const apptModalDateError = document.getElementById('apptModalDateError');
   const apptModalDateHidden = document.getElementById('apptModalDate');
   const apptModalIdHidden = document.getElementById('apptModalId');
   const apptModalTitleSelect = document.getElementById('apptModalTitleSelect');
@@ -818,6 +825,7 @@ import {
   const apptModalMobileError = document.getElementById('apptModalMobileError');
   const apptModalTimeError = document.getElementById('apptModalTimeError');
   const apptModalNotesInput = document.getElementById('apptModalNotes');
+  const apptModalConflictWarning = document.getElementById('apptModalConflictWarning');
   const apptModalCancelBtn = document.getElementById('apptModalCancelBtn');
   const apptModalSaveBtn = document.getElementById('apptModalSaveBtn');
 
@@ -834,33 +842,59 @@ import {
   let apptModalOriginalType = null;
   let apptModalOriginalStatus = null;
 
-  function openApptModal({ mode, date, appt }) {
+  function openApptModal({ mode, date, appt, prefill }) {
     apptModalMode = mode;
     apptModalIdHidden.value = appt ? appt.id : '';
     apptModalTitleEl.textContent = mode === 'edit' ? 'Edit Appointment' : 'Add Appointment';
     apptModalOriginalType = appt ? appt.type : null;
     apptModalOriginalStatus = appt ? (appt.status || 'scheduled') : null;
 
-    const targetDate = appt ? appt.date : date;
-    apptModalDateHidden.value = targetDate;
-    apptModalDateLabelEl.textContent = 'For ' + parseISODate(targetDate).toLocaleDateString('en-US', {
-      weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
-    });
+    // No calendar day was pre-selected (e.g. "Schedule Next Appointment" from
+    // the Patients tab) — show a real date input instead of the usual
+    // "For <date>" label, since there's no context to read the date from.
+    const needsDateInput = !appt && !date;
+    apptModalDateFieldEl.hidden = !needsDateInput;
+    apptModalDateLabelEl.hidden = needsDateInput;
+
+    if (needsDateInput) {
+      const defaultDate = isoDate(dateOffset(1)); // tomorrow — a sensible default for a "next" appointment
+      apptModalDateInputEl.value = defaultDate;
+      apptModalDateInputEl.min = isoDate(dateOffset(0)); // can't schedule into the past
+      apptModalDateHidden.value = defaultDate;
+      clearFieldError(apptModalDateInputEl, apptModalDateError);
+    } else {
+      const targetDate = appt ? appt.date : date;
+      apptModalDateHidden.value = targetDate;
+      apptModalDateLabelEl.textContent = 'For ' + parseISODate(targetDate).toLocaleDateString('en-US', {
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+      });
+    }
 
     apptModalTitleSelect.value = appt ? appt.title : 'Ms.';
-    apptModalTypeSelect.value = appt ? appt.type : 'counselling';
-    apptModalNameInput.value = appt ? appt.name : '';
-    apptModalMobileInput.value = appt ? appt.mobile : '';
+    apptModalTypeSelect.value = appt ? appt.type : (prefill ? 'followup' : 'counselling');
+    apptModalNameInput.value = appt ? appt.name : (prefill ? prefill.name : '');
+    apptModalMobileInput.value = appt ? appt.mobile : (prefill ? prefill.mobile : '');
     apptModalNotesInput.value = appt ? (appt.notes || '') : '';
     apptModalTimePicker.setValue(appt ? appt.time : '');
+
+    // Scheduling a known patient's next appointment: lock name/mobile since
+    // together they're how patients are identified (no separate patient
+    // record exists) — changing them here would silently create a
+    // different "patient" instead of adding to this one's history.
+    const lockIdentity = !!prefill && !appt;
+    apptModalNameInput.readOnly = lockIdentity;
+    apptModalMobileInput.readOnly = lockIdentity;
+    apptModalNameInput.classList.toggle('field__input--readonly', lockIdentity);
+    apptModalMobileInput.classList.toggle('field__input--readonly', lockIdentity);
 
     clearFieldError(apptModalNameInput, apptModalNameError);
     clearFieldError(apptModalMobileInput, apptModalMobileError);
     markFieldErrorVisible(apptModalTimeError, false);
     apptModalTimePicker.setInvalid(false);
+    apptModalConflictWarning.hidden = true;
 
     apptModalOverlay.hidden = false;
-    setTimeout(() => apptModalNameInput.focus(), 50);
+    setTimeout(() => (needsDateInput ? apptModalDateInputEl : apptModalNameInput).focus(), 50);
   }
 
   function closeApptModal() {
@@ -891,7 +925,31 @@ import {
     markFieldErrorVisible(apptModalTimeError, !timeValid);
     apptModalTimePicker.setInvalid(!timeValid);
 
-    if (!nameValid || !mobileValid || !timeValid) return;
+    // When there was no pre-selected calendar day, the date comes from the
+    // visible date input instead — validate and sync it into the same
+    // hidden field the rest of this handler already reads from.
+    const usingDateInput = !apptModalDateFieldEl.hidden;
+    let dateValid = true;
+    if (usingDateInput) {
+      dateValid = apptModalDateInputEl.value.length > 0;
+      setFieldError(apptModalDateInputEl, apptModalDateError, !dateValid);
+      if (dateValid) apptModalDateHidden.value = apptModalDateInputEl.value;
+    }
+
+    if (!nameValid || !mobileValid || !timeValid || !dateValid) return;
+
+    // Prevent accidentally creating two active appointments for the same
+    // patient at the exact same date & time (e.g. a double-tap on Save, or
+    // scheduling a "next" appointment that collides with an existing one).
+    const conflict = DataStore.getAll().some((a) =>
+      a.id !== apptModalIdHidden.value &&
+      a.mobile === mobile &&
+      a.date === apptModalDateHidden.value &&
+      a.time === time &&
+      (a.status || 'scheduled') !== 'cancelled'
+    );
+    apptModalConflictWarning.hidden = !conflict;
+    if (conflict) return;
 
     const data = {
       title: apptModalTitleSelect.value,
@@ -1605,6 +1663,153 @@ import {
   }
 
   /* ======================================================================
+     PATIENTS TAB
+     There is no separate patient database — a "patient" is derived by
+     grouping appointment records by mobile number (the one field that
+     reliably identifies the same person across visits). Next/Last
+     Appointment are computed live from that patient's appointments, so
+     they're always current with no extra data to keep in sync.
+     ====================================================================== */
+
+  const patientSearchInput = document.getElementById('patientSearchInput');
+  const patientsListEl = document.getElementById('patientsList');
+  const patientsEmptyEl = document.getElementById('patientsEmpty');
+  const patientsCountEl = document.getElementById('patientsCount');
+
+  /** Groups all appointments by mobile number and computes each patient's
+   *  nearest upcoming appointment (excluding cancelled/completed) and most
+   *  recent past appointment. */
+  function derivePatients() {
+    const now = new Date();
+    const nowKey = `${isoDate(now)} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const byMobile = new Map();
+    DataStore.getAll().forEach((a) => {
+      const key = (a.mobile || '').trim();
+      if (!key) return; // skip malformed records with no mobile number
+      if (!byMobile.has(key)) byMobile.set(key, []);
+      byMobile.get(key).push(a);
+    });
+
+    const patients = [];
+    byMobile.forEach((appts, mobile) => {
+      // Use the most recently touched record for display name/title, in
+      // case a name was corrected on a later visit.
+      const latest = appts.slice().sort((a, b) =>
+        (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '')
+      )[0];
+
+      const upcoming = appts
+        .filter((a) => {
+          const status = a.status || 'scheduled';
+          return status !== 'cancelled' && status !== 'completed' && `${a.date} ${a.time}` >= nowKey;
+        })
+        .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+
+      const past = appts
+        .filter((a) => `${a.date} ${a.time}` < nowKey)
+        .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+
+      patients.push({
+        mobile,
+        name: latest.name,
+        title: latest.title,
+        nextAppt: upcoming[0] || null,
+        lastAppt: past[0] || null,
+        appointmentCount: appts.length
+      });
+    });
+
+    patients.sort((a, b) => a.name.localeCompare(b.name));
+    return patients;
+  }
+
+  function renderPatientCard(patient) {
+    const card = document.createElement('div');
+    card.className = 'patient-card';
+
+    const avatar = document.createElement('span');
+    avatar.className = 'patient-card__avatar';
+    avatar.textContent = initialsFor(patient.name);
+
+    const info = document.createElement('div');
+    info.className = 'patient-card__info';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'patient-card__name-row';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'patient-card__name';
+    nameSpan.textContent = `${patient.title} ${patient.name}`;
+    nameRow.appendChild(nameSpan);
+    info.appendChild(nameRow);
+
+    const metaRow = document.createElement('span');
+    metaRow.className = 'patient-card__meta';
+    let metaHtml = `<span><span class="material-symbols-rounded">phone</span>${escapeHtml(patient.mobile)}</span>`;
+    metaHtml += patient.lastAppt
+      ? `<span><span class="material-symbols-rounded">history</span>Last: ${formatDateInputValue(patient.lastAppt.date)}</span>`
+      : `<span><span class="material-symbols-rounded">history</span>Last: —</span>`;
+    metaRow.innerHTML = metaHtml;
+    info.appendChild(metaRow);
+
+    const nextEl = document.createElement('span');
+    if (patient.nextAppt) {
+      nextEl.className = 'patient-card__next patient-card__next--scheduled';
+      nextEl.textContent = `Next Appointment: ${formatDateInputValue(patient.nextAppt.date)}, ${formatTime12h(patient.nextAppt.time)}`;
+    } else {
+      nextEl.className = 'patient-card__next patient-card__next--none';
+      nextEl.textContent = 'Next Appointment: Not Scheduled';
+    }
+    info.appendChild(nextEl);
+
+    card.appendChild(avatar);
+    card.appendChild(info);
+
+    const actions = document.createElement('div');
+    actions.className = 'patient-card__actions';
+    const actionBtn = document.createElement('button');
+    if (patient.nextAppt) {
+      actionBtn.className = 'btn btn--blue btn--sm';
+      actionBtn.type = 'button';
+      actionBtn.innerHTML = '<span class="material-symbols-rounded">event</span> Next Appointment';
+      actionBtn.addEventListener('click', () => openApptModal({ mode: 'edit', appt: patient.nextAppt }));
+    } else {
+      actionBtn.className = 'btn btn--green btn--sm';
+      actionBtn.type = 'button';
+      actionBtn.innerHTML = '<span class="material-symbols-rounded">add</span> Schedule Next Appointment';
+      actionBtn.addEventListener('click', () => openApptModal({
+        mode: 'add',
+        prefill: { name: patient.name, mobile: patient.mobile }
+      }));
+    }
+    actions.appendChild(actionBtn);
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  function renderPatientsList() {
+    const query = patientSearchInput.value.trim().toLowerCase();
+    let patients = derivePatients();
+    if (query) {
+      patients = patients.filter((p) =>
+        p.name.toLowerCase().includes(query) || p.mobile.includes(query)
+      );
+    }
+
+    patientsCountEl.textContent = `${patients.length} patient${patients.length === 1 ? '' : 's'}`;
+    patientsListEl.innerHTML = '';
+    if (patients.length === 0) {
+      patientsEmptyEl.hidden = false;
+    } else {
+      patientsEmptyEl.hidden = true;
+      patients.forEach((p) => patientsListEl.appendChild(renderPatientCard(p)));
+    }
+  }
+
+  patientSearchInput.addEventListener('input', renderPatientsList);
+
+  /* ======================================================================
      GLOBAL REFRESH
      ====================================================================== */
 
@@ -1612,6 +1817,7 @@ import {
     renderCalendar();
     renderReminderLists();
     renderAllAppointments();
+    renderPatientsList();
     updateStats();
   }
 

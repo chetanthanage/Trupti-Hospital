@@ -109,6 +109,10 @@
       <span class="material-symbols-rounded">list_alt</span>
       <span>All Appointments</span>
     </button>
+    <button class="tab" id="tabBtnPatients" role="tab" aria-selected="false" aria-controls="panelPatients" type="button">
+      <span class="material-symbols-rounded">groups</span>
+      <span>Patients</span>
+    </button>
   </nav>
 
   <main class="container">
@@ -297,6 +301,35 @@
       </div>
     </section>
 
+    <!-- ============================================================ -->
+    <!-- TAB 4 : PATIENTS (derived from appointment records — grouped by mobile number) -->
+    <!-- ============================================================ -->
+    <section class="panel" id="panelPatients" role="tabpanel" aria-labelledby="tabBtnPatients" hidden>
+
+      <div class="card glass">
+        <h2 class="section-card__title section-card__title--simple">Search Patients</h2>
+        <div class="filter-bar">
+          <div class="field field--grow">
+            <label class="field__label" for="patientSearchInput">Search by name or mobile</label>
+            <input class="field__input" type="text" id="patientSearchInput" placeholder="e.g. Saniya or 98765...">
+          </div>
+        </div>
+      </div>
+
+      <div class="card glass">
+        <div class="section-card__header">
+          <h2 class="section-card__title section-card__title--simple">
+            <span id="patientsCount">0 patients</span>
+          </h2>
+        </div>
+        <div class="patient-list" id="patientsList"></div>
+        <p class="empty-state" id="patientsEmpty">
+          <span class="material-symbols-rounded empty-state__icon">group_off</span>
+          No patients match your search.
+        </p>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -305,6 +338,11 @@
   <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="apptModalTitle">
     <h3 class="modal__title" id="apptModalTitle">Add Appointment</h3>
     <p class="modal__date-label" id="apptModalDateLabel">For Tuesday, 28 July 2026</p>
+    <div class="field" id="apptModalDateField" hidden>
+      <label class="field__label" for="apptModalDateInput">Appointment Date</label>
+      <input class="field__input" type="date" id="apptModalDateInput">
+      <span class="field__error" id="apptModalDateError">Appointment date is required.</span>
+    </div>
     <input type="hidden" id="apptModalDate">
     <input type="hidden" id="apptModalId">
 
@@ -369,6 +407,11 @@
         <textarea class="field__input field__input--textarea" id="apptModalNotes" rows="2" placeholder="Any additional notes…"></textarea>
       </div>
     </div>
+
+    <p class="conflict-warning" id="apptModalConflictWarning" hidden>
+      <span class="material-symbols-rounded">warning</span>
+      This patient already has an appointment at this date &amp; time.
+    </p>
 
     <div class="btn-row btn-row--modal">
       <button class="btn btn--grey" id="apptModalCancelBtn" type="button">Cancel</button>

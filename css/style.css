@@ -599,6 +599,43 @@ button{ cursor:pointer; }
 }
 .appt-card__status-note .material-symbols-rounded{ font-size: 14px; }
 
+/* ---------- Patients tab (derived from appointment records, grouped by mobile) ---------- */
+.patient-list{ display:flex; flex-direction: column; gap: 12px; }
+.patient-card{
+  display:flex;
+  align-items:flex-start;
+  gap: 14px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--print-accent, #0f9e94);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  animation: slideIn 260ms ease;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.patient-card:hover{ transform: translateX(2px); box-shadow: var(--shadow-sm); }
+.patient-card__avatar{
+  width: 40px; height: 40px; min-width: 40px;
+  border-radius: 50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight: 800; font-size: 0.82rem; color: #fff;
+  background: var(--grad-teal);
+}
+.patient-card__info{ display:flex; flex-direction: column; gap: 5px; min-width:0; flex: 1; }
+.patient-card__name-row{ display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+.patient-card__name{ font-weight: 700; font-size: 0.95rem; overflow-wrap: anywhere; }
+.patient-card__meta{ font-size: 0.8rem; color: var(--color-text-muted); display:flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.patient-card__meta .material-symbols-rounded{ font-size: 15px; vertical-align: -3px; margin-right: 2px; }
+.patient-card__next{ font-size: 0.85rem; font-weight: 600; }
+.patient-card__next--scheduled{ color: var(--color-success, #22C55E); }
+.patient-card__next--none{ color: var(--color-text-muted); font-weight: 500; }
+.patient-card__actions{ display:flex; flex-direction: column; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+
+/* Read-only identity fields when scheduling a known patient's next appointment
+   (name/mobile are the patient's identity key, so they're locked here). */
+.field__input--readonly{ background: var(--color-surface-alt); color: var(--color-text-muted); cursor: not-allowed; }
+
+
 /* Chips: type label + "Today" badge */
 .chip{
   display:inline-flex;
@@ -910,6 +947,18 @@ button{ cursor:pointer; }
   font-weight: 600;
 }
 .field--invalid .field__error{ display:block; }
+
+.conflict-warning{
+  display:flex; align-items:center; gap:6px;
+  font-size: 0.8rem; font-weight: 600; color: var(--color-danger);
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  margin-top: 14px;
+}
+.conflict-warning .material-symbols-rounded{ font-size: 18px; }
+.conflict-warning[hidden]{ display:none; }
 
 /* ---------- Custom time picker (Hour / Minute / AM-PM) ---------- */
 .time-picker{
