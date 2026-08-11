@@ -568,7 +568,7 @@ button{ cursor:pointer; }
   gap: 8px;
   align-items: flex-end;
 }
-.appt-card__actions-row{ display:flex; gap: 6px; }
+.appt-card__actions-row{ display:grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .appt-card__action{
   border: none;
   color: #fff;
@@ -588,6 +588,7 @@ button{ cursor:pointer; }
 .appt-card__action--delete{ background: var(--grad-danger); box-shadow: var(--shadow-glow-red); }
 .appt-card__action--whatsapp{ background: var(--grad-success); box-shadow: var(--shadow-glow-green); }
 .appt-card__action--reschedule{ background: var(--grad-warning); box-shadow: var(--shadow-glow-orange); }
+.appt-card__action--next{ background: var(--grad-cyan); box-shadow: var(--shadow-glow-cyan); }
 
 .appt-card__status-note{
   font-size: 0.78rem;

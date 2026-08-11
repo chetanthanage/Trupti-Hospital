@@ -610,6 +610,16 @@ import {
         openRescheduleModal(appt);
       });
 
+      const nextApptBtn = document.createElement('button');
+      nextApptBtn.className = 'appt-card__action appt-card__action--next';
+      nextApptBtn.type = 'button';
+      nextApptBtn.setAttribute('aria-label', `Schedule next appointment for ${appt.name}`);
+      nextApptBtn.innerHTML = '<span class="material-symbols-rounded">event_upcoming</span>';
+      nextApptBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openApptModal({ mode: 'add', prefill: { name: appt.name, mobile: appt.mobile } });
+      });
+
       const editBtn = document.createElement('button');
       editBtn.className = 'appt-card__action appt-card__action--edit';
       editBtn.type = 'button';
@@ -634,6 +644,7 @@ import {
       if ((appt.status || 'scheduled') !== 'cancelled') {
         row.appendChild(rescheduleBtn);
       }
+      row.appendChild(nextApptBtn);
       row.appendChild(editBtn);
       row.appendChild(deleteBtn);
       actions.appendChild(row);
