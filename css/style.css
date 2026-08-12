@@ -503,9 +503,6 @@ button{ cursor:pointer; }
 .appt-list{ display:flex; flex-direction: column; gap: 12px; }
 .appt-list--modal{ margin-top: 4px; max-height: 50vh; overflow-y: auto; padding-right: 4px; }
 .appt-card{
-  display:flex;
-  align-items:flex-start;
-  gap: 14px;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-left: 4px solid #8B5CF6;
@@ -516,6 +513,7 @@ button{ cursor:pointer; }
   transition: transform var(--transition), box-shadow var(--transition);
 }
 .appt-card:hover{ transform: translateX(2px); box-shadow: var(--shadow-sm); }
+.appt-card--clickable{ cursor: pointer; }
 
 /* Type colour coding: Counselling=teal, Follow-up=blue, New Patient=green, Review=orange, Cancelled=red, Completed=grey */
 .appt-card--purple{ border-left-color: #8B5CF6; }
@@ -538,6 +536,17 @@ button{ cursor:pointer; }
   from{ opacity:0; transform: translateY(8px); }
   to{ opacity:1; transform: translateY(0); }
 }
+
+.appt-card__header{ display:flex; align-items:flex-start; gap: 14px; }
+.appt-card__chevron{
+  font-size: 20px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform var(--transition);
+}
+.appt-card--expanded .appt-card__chevron{ transform: rotate(180deg); }
+
 .appt-card__avatar{
   width: 40px; height: 40px;
   min-width: 40px;
@@ -562,33 +571,66 @@ button{ cursor:pointer; }
 .appt-card__meta .material-symbols-rounded{ font-size: 15px; vertical-align: -3px; margin-right: 2px; }
 .appt-card__notes{ font-size: 0.78rem; color: var(--color-text-muted); font-style: italic; margin-top: 2px; }
 
-.appt-card__actions{
+/* Action grid: icon-on-top, label-below, same collapsible pattern as the
+   Patients tab cards (see .patient-actions) — hidden until the card
+   itself is tapped/clicked, and closes again on the next tap. Buttons
+   stop their click from bubbling to the card, so using one doesn't
+   immediately re-collapse the row. Colours are kept distinct from
+   .patient-action's palette since they carry their own established
+   meaning here (WhatsApp=green, Reschedule=orange, Next=cyan, Edit=blue,
+   Delete=red). */
+.appt-card__action-grid{
+  display:grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+  max-height: 90px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height var(--transition), opacity var(--transition), margin-top var(--transition);
+}
+.appt-card__action-grid--collapsed{
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
+}
+.appt-card__action-grid-item{
   display:flex;
   flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-}
-.appt-card__actions-row{ display:grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.appt-card__action{
-  border: none;
-  color: #fff;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  display:flex;
   align-items:center;
   justify-content:center;
-  transition: transform var(--transition), filter var(--transition);
+  gap: 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 4px;
+  min-height: 52px;
+  min-width: 0;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align:center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: transform var(--transition), filter var(--transition), box-shadow var(--transition);
 }
-.appt-card__action .material-symbols-rounded{ font-size: 16px; }
-.appt-card__action:hover{ transform: scale(1.08); filter: brightness(1.08); }
-.appt-card__action:active{ transform: scale(0.94); }
-.appt-card__action--edit{ background: var(--grad-secondary); box-shadow: var(--shadow-glow-blue); }
-.appt-card__action--delete{ background: var(--grad-danger); box-shadow: var(--shadow-glow-red); }
-.appt-card__action--whatsapp{ background: var(--grad-success); box-shadow: var(--shadow-glow-green); }
-.appt-card__action--reschedule{ background: var(--grad-warning); box-shadow: var(--shadow-glow-orange); }
-.appt-card__action--next{ background: var(--grad-cyan); box-shadow: var(--shadow-glow-cyan); }
+.appt-card__action-grid-item .material-symbols-rounded{ font-size: 18px; }
+.appt-card__action-grid-item:hover{ transform: translateY(-2px); filter: brightness(1.06); }
+.appt-card__action-grid-item:active{ transform: translateY(0) scale(0.96); }
+.appt-card__action-grid-item--whatsapp{ background: var(--grad-success); box-shadow: var(--shadow-glow-green); }
+.appt-card__action-grid-item--reschedule{ background: var(--grad-warning); box-shadow: var(--shadow-glow-orange); }
+.appt-card__action-grid-item--next{ background: var(--grad-cyan); box-shadow: var(--shadow-glow-cyan); }
+.appt-card__action-grid-item--edit{ background: var(--grad-secondary); box-shadow: var(--shadow-glow-blue); }
+.appt-card__action-grid-item--delete{ background: var(--grad-danger); box-shadow: var(--shadow-glow-red); }
+.appt-card__action-grid-item:disabled{ opacity: 0.4; cursor: not-allowed; transform:none; filter:none; }
+
+@media (max-width: 460px){
+  .appt-card__action-grid{ grid-template-columns: repeat(3, 1fr); max-height: 180px; }
+  /* Must come after the rule above (equal specificity, later wins) so a
+     collapsed card doesn't reserve empty space on mobile. */
+  .appt-card__action-grid--collapsed{ max-height: 0; }
+}
 
 .appt-card__status-note{
   font-size: 0.78rem;
@@ -698,6 +740,9 @@ button{ cursor:pointer; }
 
 @media (max-width: 460px){
   .patient-actions{ grid-template-columns: repeat(4, 1fr); max-height: 160px; }
+  /* Must come after the rule above (equal specificity, later wins) so a
+     collapsed card doesn't reserve empty space on mobile. */
+  .patient-actions--collapsed{ max-height: 0; }
 }
 
 /* Send Reminder preview */

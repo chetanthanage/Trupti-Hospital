@@ -518,6 +518,26 @@ import {
      consistent.
      ====================================================================== */
 
+  /** Builds one action button used by a card's collapsible action grid
+   *  (icon on top, label below). Shared by patient cards and, for the All
+   *  Appointments list, appointment cards — baseClass controls which set
+   *  of CSS variant colours (--whatsapp, --edit, etc.) apply. */
+  function buildActionGridBtn({ icon, label, baseClass, variant, onClick, disabled }) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `${baseClass} ${baseClass}--${variant}`;
+    btn.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${escapeHtml(label)}</span>`;
+    if (disabled) {
+      btn.disabled = true;
+    } else {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClick();
+      });
+    }
+    return btn;
+  }
+
   function renderApptCard(appt, opts) {
     opts = opts || {};
     const meta = TYPE_META[appt.type] || TYPE_META.counselling;
@@ -525,7 +545,12 @@ import {
     const card = document.createElement('div');
     card.className = `appt-card appt-card--${meta.color}`;
     if (isStartingSoon(appt)) card.classList.add('appt-card--soon');
+    if (opts.showActions) card.classList.add('appt-card--clickable');
     card.dataset.id = appt.id;
+
+    /* ---------- Header: avatar, name/chips, meta, notes/status ---------- */
+    const header = document.createElement('div');
+    header.className = 'appt-card__header';
 
     const avatar = document.createElement('span');
     avatar.className = 'appt-card__avatar';
@@ -591,74 +616,67 @@ import {
       info.appendChild(rescheduleEl);
     }
 
-    card.appendChild(avatar);
-    card.appendChild(info);
+    header.appendChild(avatar);
+    header.appendChild(info);
 
     if (opts.showActions) {
-      const actions = document.createElement('div');
-      actions.className = 'appt-card__actions';
-      const row = document.createElement('div');
-      row.className = 'appt-card__actions-row';
+      // Chevron hints the card is tappable to reveal its action buttons,
+      // matching the patient-card interaction pattern.
+      const chevron = document.createElement('span');
+      chevron.className = 'appt-card__chevron material-symbols-rounded';
+      chevron.textContent = 'expand_more';
+      chevron.setAttribute('aria-hidden', 'true');
+      header.appendChild(chevron);
+    }
 
-      const waBtn = document.createElement('button');
-      waBtn.className = 'appt-card__action appt-card__action--whatsapp';
-      waBtn.type = 'button';
-      waBtn.setAttribute('aria-label', `Send WhatsApp message to ${appt.name}`);
-      waBtn.innerHTML = '<span class="material-symbols-rounded">send</span>';
-      waBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openWhatsApp(appt.mobile, generateAppointmentMessage(appt));
-      });
+    card.appendChild(header);
 
-      const rescheduleBtn = document.createElement('button');
-      rescheduleBtn.className = 'appt-card__action appt-card__action--reschedule';
-      rescheduleBtn.type = 'button';
-      rescheduleBtn.setAttribute('aria-label', `Reschedule appointment for ${appt.name}`);
-      rescheduleBtn.innerHTML = '<span class="material-symbols-rounded">event_repeat</span>';
-      rescheduleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openRescheduleModal(appt);
-      });
+    if (opts.showActions) {
+      const actionGrid = document.createElement('div');
+      actionGrid.className = 'appt-card__action-grid appt-card__action-grid--collapsed';
 
-      const nextApptBtn = document.createElement('button');
-      nextApptBtn.className = 'appt-card__action appt-card__action--next';
-      nextApptBtn.type = 'button';
-      nextApptBtn.setAttribute('aria-label', `Schedule next appointment for ${appt.name}`);
-      nextApptBtn.innerHTML = '<span class="material-symbols-rounded">event_upcoming</span>';
-      nextApptBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openNextApptModal(appt);
-      });
-
-      const editBtn = document.createElement('button');
-      editBtn.className = 'appt-card__action appt-card__action--edit';
-      editBtn.type = 'button';
-      editBtn.setAttribute('aria-label', `Edit appointment for ${appt.name}`);
-      editBtn.innerHTML = '<span class="material-symbols-rounded">edit</span>';
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openApptModal({ mode: 'edit', appt });
-      });
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'appt-card__action appt-card__action--delete';
-      deleteBtn.type = 'button';
-      deleteBtn.setAttribute('aria-label', `Delete appointment for ${appt.name}`);
-      deleteBtn.innerHTML = '<span class="material-symbols-rounded">delete</span>';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        confirmDeleteAppointment(appt);
-      });
-
-      row.appendChild(waBtn);
+      actionGrid.appendChild(buildActionGridBtn({
+        icon: 'send', label: 'WhatsApp', baseClass: 'appt-card__action-grid-item', variant: 'whatsapp',
+        onClick: () => openWhatsApp(appt.mobile, generateAppointmentMessage(appt))
+      }));
       if ((appt.status || 'scheduled') !== 'cancelled') {
-        row.appendChild(rescheduleBtn);
+        actionGrid.appendChild(buildActionGridBtn({
+          icon: 'event_repeat', label: 'Reschedule', baseClass: 'appt-card__action-grid-item', variant: 'reschedule',
+          onClick: () => openRescheduleModal(appt)
+        }));
       }
-      row.appendChild(nextApptBtn);
-      row.appendChild(editBtn);
-      row.appendChild(deleteBtn);
-      actions.appendChild(row);
-      card.appendChild(actions);
+      actionGrid.appendChild(buildActionGridBtn({
+        icon: 'event_upcoming', label: 'Next Appt', baseClass: 'appt-card__action-grid-item', variant: 'next',
+        onClick: () => openNextApptModal(appt)
+      }));
+      actionGrid.appendChild(buildActionGridBtn({
+        icon: 'edit', label: 'Edit', baseClass: 'appt-card__action-grid-item', variant: 'edit',
+        onClick: () => openApptModal({ mode: 'edit', appt })
+      }));
+      actionGrid.appendChild(buildActionGridBtn({
+        icon: 'delete', label: 'Delete', baseClass: 'appt-card__action-grid-item', variant: 'delete',
+        onClick: () => confirmDeleteAppointment(appt)
+      }));
+
+      card.appendChild(actionGrid);
+
+      // Buttons start hidden — tapping/clicking anywhere on the card
+      // (other than a button itself, which stops propagation) reveals
+      // them, same as the Patients tab cards.
+      const toggleExpanded = () => {
+        const expanded = card.classList.toggle('appt-card--expanded');
+        actionGrid.classList.toggle('appt-card__action-grid--collapsed', !expanded);
+        card.setAttribute('aria-expanded', String(expanded));
+      };
+      card.tabIndex = 0;
+      card.setAttribute('aria-expanded', 'false');
+      card.addEventListener('click', toggleExpanded);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleExpanded();
+        }
+      });
     }
 
     return card;
@@ -1980,21 +1998,10 @@ import {
   }
 
   /** Builds one action button (used for both the condensed row and the
-   *  expanded grid) so the two stay behaviourally identical. */
-  function buildPatientActionBtn({ icon, label, variant, onClick, disabled, expanded }) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `patient-action patient-action--${variant}`;
-    btn.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${escapeHtml(label)}</span>`;
-    if (disabled) {
-      btn.disabled = true;
-    } else {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onClick();
-      });
-    }
-    return btn;
+   *  expanded grid) so the two stay behaviourally identical. Delegates to
+   *  the shared buildActionGridBtn helper also used by appointment cards. */
+  function buildPatientActionBtn({ icon, label, variant, onClick, disabled }) {
+    return buildActionGridBtn({ icon, label, baseClass: 'patient-action', variant, onClick, disabled });
   }
 
   /** Wraps a single appointment record in a patient-shaped object so
