@@ -2014,6 +2014,8 @@ import {
 
     const card = document.createElement('div');
     card.className = 'patient-card';
+    card.tabIndex = 0;
+    card.setAttribute('aria-expanded', 'false');
 
     /* ---------- Header: avatar, name, type/today chips, time + phone ---------- */
     const header = document.createElement('div');
@@ -2098,6 +2100,15 @@ import {
 
     header.appendChild(avatar);
     header.appendChild(info);
+
+    // Chevron hints that the card is tappable to reveal its action buttons,
+    // and flips to point the other way once expanded.
+    const chevron = document.createElement('span');
+    chevron.className = 'patient-card__chevron material-symbols-rounded';
+    chevron.textContent = 'expand_more';
+    chevron.setAttribute('aria-hidden', 'true');
+    header.appendChild(chevron);
+
     card.appendChild(header);
 
     /* ---------- Shared action handlers ---------- */
@@ -2148,7 +2159,24 @@ import {
     actions.appendChild(buildPatientActionBtn({ icon: 'notifications', label: 'Remind', variant: 'reminder', onClick: doSendReminder, disabled: !hasNext }));
     actions.appendChild(buildPatientActionBtn({ icon: 'edit', label: 'Edit', variant: 'edit', onClick: doEdit }));
     actions.appendChild(buildPatientActionBtn({ icon: 'event_busy', label: 'Cancel', variant: 'cancel', onClick: doCancel, disabled: !hasNext || isCancelled }));
+
+    // Buttons start hidden — tapping/clicking anywhere on the card (other
+    // than a button itself, which stops propagation) reveals them.
+    actions.classList.add('patient-actions--collapsed');
     card.appendChild(actions);
+
+    const toggleExpanded = () => {
+      const expanded = card.classList.toggle('patient-card--expanded');
+      actions.classList.toggle('patient-actions--collapsed', !expanded);
+      card.setAttribute('aria-expanded', String(expanded));
+    };
+    card.addEventListener('click', toggleExpanded);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleExpanded();
+      }
+    });
 
     return card;
   }

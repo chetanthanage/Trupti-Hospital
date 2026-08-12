@@ -614,10 +614,19 @@ button{ cursor:pointer; }
   padding: 14px 16px;
   animation: slideIn 260ms ease;
   transition: box-shadow var(--transition);
+  cursor: pointer;
 }
 .patient-card:hover{ box-shadow: var(--shadow-sm); }
 
 .patient-card__header{ display:flex; align-items:flex-start; gap: 12px; }
+.patient-card__chevron{
+  font-size: 20px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform var(--transition);
+}
+.patient-card--expanded .patient-card__chevron{ transform: rotate(180deg); }
 .patient-card__avatar{
   width: 40px; height: 40px; min-width: 40px;
   border-radius: 50%;
@@ -634,12 +643,26 @@ button{ cursor:pointer; }
 .patient-card__next--scheduled{ color: var(--color-success, #22C55E); }
 .patient-card__next--none{ color: var(--color-text-muted); font-weight: 500; }
 
-/* Action row: icon-on-top, label-below, compact + tappable. */
+/* Action row: icon-on-top, label-below, compact + tappable.
+   Hidden by default — tapping the card (see renderPatientCard in app.js)
+   reveals it via a max-height/opacity transition, and hides it again on
+   the next tap. Buttons themselves stop the click from bubbling to the
+   card, so using one doesn't immediately re-collapse the row. */
 .patient-actions{
   display:grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   margin-top: 12px;
+  max-height: 90px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height var(--transition), opacity var(--transition), margin-top var(--transition);
+}
+.patient-actions--collapsed{
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
 }
 .patient-action{
   display:flex;
@@ -658,6 +681,7 @@ button{ cursor:pointer; }
   line-height: 1.15;
   text-align:center;
   overflow-wrap: anywhere;
+  cursor: pointer;
   transition: transform var(--transition), filter var(--transition), box-shadow var(--transition);
 }
 .patient-action .material-symbols-rounded{ font-size: 18px; }
@@ -673,7 +697,7 @@ button{ cursor:pointer; }
 .patient-action:disabled{ opacity: 0.4; cursor: not-allowed; transform:none; filter:none; }
 
 @media (max-width: 460px){
-  .patient-actions{ grid-template-columns: repeat(4, 1fr); }
+  .patient-actions{ grid-template-columns: repeat(4, 1fr); max-height: 160px; }
 }
 
 /* Send Reminder preview */
