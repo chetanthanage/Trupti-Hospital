@@ -1300,11 +1300,19 @@ import {
     if (conflict) return;
 
     // Carry over everything from the source appointment except date/time/notes.
+    // If the source was itself marked Cancelled/Completed, "cancelled"/
+    // "completed" isn't a sensible category for a brand-new, not-yet-happened
+    // appointment — fall back to Follow-up in that case; any real category
+    // (Counselling, Follow-up, New Patient, Review) carries over untouched.
+    const carryType = (nextApptSource.type === 'cancelled' || nextApptSource.type === 'completed')
+      ? 'followup'
+      : nextApptSource.type;
+
     const data = {
       title: nextApptSource.title,
       name: nextApptSource.name,
       mobile: nextApptSource.mobile,
-      type: nextApptSource.type,
+      type: carryType,
       date,
       time,
       notes: nextApptNotesInput.value.trim(),
