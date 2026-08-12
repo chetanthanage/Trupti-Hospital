@@ -617,7 +617,7 @@ import {
       nextApptBtn.innerHTML = '<span class="material-symbols-rounded">event_upcoming</span>';
       nextApptBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        openApptModal({ mode: 'add', prefill: { name: appt.name, mobile: appt.mobile } });
+        openNextApptModal(appt);
       });
 
       const editBtn = document.createElement('button');
@@ -1197,6 +1197,120 @@ import {
   });
 
   /* ======================================================================
+     NEXT APPOINTMENT MODAL — the lightweight popup opened by the "Next
+     Appt" action on an appointment card (All Appointments tab). It only
+     ever asks for the new date, time & notes: everything else (patient,
+     doctor/counsellor, contact info, title, appointment type) is carried
+     over from the source appointment automatically. Saving creates a
+     brand-new appointment record for the same patient — the source
+     appointment itself is never modified, so it stays exactly as-is in
+     the patient's appointment history.
+     ====================================================================== */
+
+  const nextApptModalOverlay = document.getElementById('nextApptModalOverlay');
+  const nextApptModalPatientEl = document.getElementById('nextApptModalPatient');
+  const nextApptModalCurrentEl = document.getElementById('nextApptModalCurrent');
+  const nextApptModalSourceId = document.getElementById('nextApptModalSourceId');
+  const nextApptDateInput = document.getElementById('nextApptDate');
+  const nextApptDateError = document.getElementById('nextApptDateError');
+  const nextApptTimeError = document.getElementById('nextApptTimeError');
+  const nextApptNotesInput = document.getElementById('nextApptNotes');
+  const nextApptConflictWarning = document.getElementById('nextApptConflictWarning');
+  const nextApptCancelBtn = document.getElementById('nextApptCancelBtn');
+  const nextApptSaveBtn = document.getElementById('nextApptSaveBtn');
+
+  const nextApptTimePicker = createTimePicker({
+    hourEl: document.getElementById('nextApptTimeHour'),
+    minuteEl: document.getElementById('nextApptTimeMinute'),
+    amBtn: document.getElementById('nextApptTimeAM'),
+    pmBtn: document.getElementById('nextApptTimePM'),
+    hiddenEl: document.getElementById('nextApptTime'),
+    wrapperEl: document.getElementById('nextApptTimePicker')
+  });
+
+  let nextApptSource = null; // the existing appointment this "next" one is based on
+
+  function openNextApptModal(appt) {
+    nextApptSource = appt;
+    nextApptModalSourceId.value = appt.id;
+    nextApptModalPatientEl.textContent = `${appt.title} ${appt.name}`;
+    const meta = TYPE_META[appt.type] || TYPE_META.counselling;
+    nextApptModalCurrentEl.textContent =
+      `Current: ${formatDateInputValue(appt.date)} · ${formatTime12h(appt.time)} · ${meta.label} · ${appt.mobile}`;
+
+    const defaultDate = isoDate(dateOffset(1)); // tomorrow — a sensible default for a "next" appointment
+    nextApptDateInput.value = defaultDate;
+    nextApptDateInput.min = isoDate(dateOffset(0)); // can't schedule into the past
+    nextApptTimePicker.setValue('');
+    nextApptNotesInput.value = '';
+
+    clearFieldError(nextApptDateInput, nextApptDateError);
+    markFieldErrorVisible(nextApptTimeError, false);
+    nextApptTimePicker.setInvalid(false);
+    nextApptConflictWarning.hidden = true;
+
+    nextApptModalOverlay.hidden = false;
+    document.body.classList.add('modal-lock-scroll'); // keep the page behind the popup from scrolling
+    setTimeout(() => nextApptDateInput.focus(), 50);
+  }
+
+  function closeNextApptModal() {
+    nextApptModalOverlay.hidden = true;
+    document.body.classList.remove('modal-lock-scroll');
+    nextApptSource = null;
+  }
+
+  nextApptCancelBtn.addEventListener('click', closeNextApptModal);
+  nextApptModalOverlay.addEventListener('click', (e) => {
+    if (e.target === nextApptModalOverlay) closeNextApptModal();
+  });
+
+  nextApptSaveBtn.addEventListener('click', () => {
+    if (!nextApptSource) return;
+
+    const date = nextApptDateInput.value;
+    const time = document.getElementById('nextApptTime').value;
+
+    const dateValid = date.length > 0 && date >= nextApptDateInput.min;
+    const timeValid = time.length > 0;
+    setFieldError(nextApptDateInput, nextApptDateError, !dateValid);
+    markFieldErrorVisible(nextApptTimeError, !timeValid);
+    nextApptTimePicker.setInvalid(!timeValid);
+    if (!dateValid || !timeValid) return;
+
+    // Same duplicate-slot guard used by the Add/Edit Appointment modal —
+    // prevents accidentally double-booking this patient at the same time.
+    const conflict = DataStore.getAll().some((a) =>
+      a.mobile === nextApptSource.mobile &&
+      a.date === date &&
+      a.time === time &&
+      (a.status || 'scheduled') !== 'cancelled'
+    );
+    nextApptConflictWarning.hidden = !conflict;
+    if (conflict) return;
+
+    // Carry over everything from the source appointment except date/time/notes.
+    const data = {
+      title: nextApptSource.title,
+      name: nextApptSource.name,
+      mobile: nextApptSource.mobile,
+      type: nextApptSource.type,
+      date,
+      time,
+      notes: nextApptNotesInput.value.trim(),
+      status: 'scheduled'
+    };
+
+    const created = DataStore.add(data);
+    logActivity('Appointment Created', created.id, { via: 'Next Appointment', from: nextApptSource.id });
+    showToast('Next appointment scheduled successfully.');
+
+    closeNextApptModal();
+    refreshEverything();
+    if (!dayModalOverlay.hidden) renderDayModalList();
+  });
+
+  /* ======================================================================
      PATIENT CARD POPUPS — View Appointments / Send Reminder / More Options /
      Cancel (direct). These reuse the same DataStore, WhatsApp, toast and
      undo plumbing as the modals above; they just give the Patients tab its
@@ -1212,6 +1326,8 @@ import {
     dayModalOverlay.hidden = true;
     patientHistoryModalOverlay.hidden = true;
     sendReminderModalOverlay.hidden = true;
+    nextApptModalOverlay.hidden = true;
+    document.body.classList.remove('modal-lock-scroll');
   }
 
   /* ---------- View Appointments ---------- */

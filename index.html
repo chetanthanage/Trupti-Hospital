@@ -564,6 +564,63 @@
   </div>
 </div>
 
+<!-- ============ NEXT APPOINTMENT MODAL (date, time & notes only) ============ -->
+<div class="modal-overlay" id="nextApptModalOverlay" hidden>
+  <div class="modal modal--next-appt glass" role="dialog" aria-modal="true" aria-labelledby="nextApptModalTitle">
+    <h3 class="modal__title" id="nextApptModalTitle">Schedule Next Appointment</h3>
+
+    <div class="cancel-confirm__patient">
+      <span class="cancel-confirm__name" id="nextApptModalPatient">Patient Name</span>
+      <span class="cancel-confirm__datetime" id="nextApptModalCurrent">Current: Date · Time</span>
+    </div>
+    <input type="hidden" id="nextApptModalSourceId">
+
+    <div class="form-grid form-grid--modal">
+      <div class="field">
+        <label class="field__label" for="nextApptDate">Next Appointment Date</label>
+        <input class="field__input" type="date" id="nextApptDate">
+        <span class="field__error" id="nextApptDateError">Please select a valid, upcoming date.</span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" id="nextApptTimeLabel">Next Appointment Time</label>
+        <div class="time-picker" id="nextApptTimePicker">
+          <select class="time-picker__select" id="nextApptTimeHour" aria-label="Hour">
+            <option value="">HH</option>
+          </select>
+          <span class="time-picker__colon">:</span>
+          <select class="time-picker__select" id="nextApptTimeMinute" aria-label="Minute">
+            <option value="">MM</option>
+          </select>
+          <div class="time-picker__meridiem" role="group" aria-label="AM or PM">
+            <button type="button" class="time-picker__meridiem-btn" data-value="AM" id="nextApptTimeAM">AM</button>
+            <button type="button" class="time-picker__meridiem-btn" data-value="PM" id="nextApptTimePM">PM</button>
+          </div>
+        </div>
+        <input type="hidden" id="nextApptTime">
+        <span class="field__error" id="nextApptTimeError">Next appointment time is required.</span>
+      </div>
+
+      <div class="field field--span2">
+        <label class="field__label" for="nextApptNotes">Notes (Optional)</label>
+        <textarea class="field__input field__input--textarea" id="nextApptNotes" rows="3" placeholder="Any additional notes…"></textarea>
+      </div>
+    </div>
+
+    <p class="conflict-warning" id="nextApptConflictWarning" hidden>
+      <span class="material-symbols-rounded">warning</span>
+      This patient already has an appointment at this date &amp; time.
+    </p>
+
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="nextApptCancelBtn" type="button">Cancel</button>
+      <button class="btn btn--orange" id="nextApptSaveBtn" type="button">
+        <span class="material-symbols-rounded">event_upcoming</span> Schedule Next Appointment
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ PATIENT: VIEW APPOINTMENTS MODAL ============ -->
 <div class="modal-overlay" id="patientHistoryModalOverlay" hidden>
   <div class="modal modal--wide glass" role="dialog" aria-modal="true" aria-labelledby="patientHistoryModalTitle">

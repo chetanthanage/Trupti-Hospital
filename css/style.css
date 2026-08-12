@@ -1142,6 +1142,33 @@ button{ cursor:pointer; }
   color: var(--color-warning);
 }
 
+/* ---------- Next Appointment modal (date/time/notes only) ----------
+   Scoped to this modal only, per spec: fits any viewport width (desktop,
+   laptop, tablet, mobile, portrait & landscape) without touching the
+   shared .modal-overlay/.modal rules other popups rely on. */
+body.modal-lock-scroll{ overflow: hidden; }
+
+#nextApptModalOverlay{ align-items: center; padding: 16px; }
+#nextApptModalOverlay .modal--next-appt{
+  width: min(92vw, 420px);
+  max-width: 420px;
+  max-height: min(85vh, 620px);
+  border-radius: var(--radius);
+  padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+  margin: 0 auto;
+  overflow-y: auto;
+}
+@media (max-width: 380px){
+  #nextApptModalOverlay{ padding: 10px; }
+  #nextApptModalOverlay .modal--next-appt{ width: min(94vw, 420px); padding: 18px 14px calc(16px + env(safe-area-inset-bottom)); }
+}
+@media (max-height: 480px){
+  /* Short/landscape mobile screens: let the content area scroll instead
+     of the popup growing taller than the viewport. */
+  #nextApptModalOverlay{ align-items: flex-start; padding: 10px; }
+  #nextApptModalOverlay .modal--next-appt{ max-height: min(94vh, 620px); }
+}
+
 /* ---------- Cancel confirmation / Reschedule patient info block ---------- */
 .cancel-confirm__patient{
   background: var(--color-surface-alt);
