@@ -452,6 +452,16 @@ import {
     return { setValue, clear, setInvalid };
   }
 
+  /** Moves focus to a modal's panel (not one of its inputs) when it opens,
+   *  so screen readers still announce the dialog without a mobile virtual
+   *  keyboard or native date/time picker popping open automatically. */
+  function focusModalPanel(overlayEl) {
+    const panel = overlayEl.querySelector('.modal');
+    if (!panel) return;
+    if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+    panel.focus({ preventScroll: true });
+  }
+
   /* ======================================================================
      FIELD ERROR HELPERS
      ====================================================================== */
@@ -905,7 +915,7 @@ import {
     apptModalConflictWarning.hidden = true;
 
     apptModalOverlay.hidden = false;
-    setTimeout(() => (needsDateInput ? apptModalDateInputEl : apptModalNameInput).focus(), 50);
+    setTimeout(() => focusModalPanel(apptModalOverlay), 50);
   }
 
   function closeApptModal() {
@@ -1251,7 +1261,7 @@ import {
 
     nextApptModalOverlay.hidden = false;
     document.body.classList.add('modal-lock-scroll'); // keep the page behind the popup from scrolling
-    setTimeout(() => nextApptDateInput.focus(), 50);
+    setTimeout(() => focusModalPanel(nextApptModalOverlay), 50);
   }
 
   function closeNextApptModal() {
@@ -2085,8 +2095,14 @@ import {
     /* ---------- Shared action handlers ---------- */
     const doNextAppointment = () => {
       closeAllActionPopups();
-      if (hasNext) {
-        openApptModal({ mode: 'edit', appt: patient.nextAppt });
+      // Base the next appointment on whichever appointment we already have
+      // for this patient — the upcoming one if there is one, otherwise
+      // their most recent past one — so name/mobile/title/type never need
+      // to be re-entered. Only fall back to the full form when there's
+      // truly no appointment on record yet for this patient.
+      const source = patient.nextAppt || patient.lastAppt;
+      if (source) {
+        openNextApptModal(source);
       } else {
         openApptModal({ mode: 'add', prefill: { name: patient.name, mobile: patient.mobile } });
       }
