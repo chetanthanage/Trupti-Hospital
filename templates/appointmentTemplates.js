@@ -108,7 +108,7 @@ export function generateReminderMessage(todayList, tomorrowList) {
     body += `\nThere are no appointments scheduled for today or tomorrow yet.\n`;
   }
 
-  body += `\nWould you like me to call the patients to confirm their attendance, or would you like me to make any changes?\n\n`;
+  body += `\nIf you’d like any changes, please let me know, and I’ll be happy to make them.\n\n`;
   body += `Thank you, Ma'am.\nHave a wonderful day! 😊`;
 
   return body;

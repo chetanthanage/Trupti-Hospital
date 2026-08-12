@@ -1,2 +1,4 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Auto detect text files, normalize to LF in the repo, and always check
+# them out as LF too — overrides a local core.autocrlf=true so files like
+# .js/.html/.css don't get silently converted to CRLF on checkout.
+* text=auto eol=lf
