@@ -1434,6 +1434,45 @@ import {
     showToast('Reminder sent successfully.');
   });
 
+  /* ---------- Send Confirmation (separate button, patient card) ---------- */
+  const sendConfirmationModalOverlay = document.getElementById('sendConfirmationModalOverlay');
+  const sendConfirmationName = document.getElementById('sendConfirmationName');
+  const sendConfirmationDateTime = document.getElementById('sendConfirmationDateTime');
+  const sendConfirmationPreview = document.getElementById('sendConfirmationPreview');
+  const sendConfirmationCancelBtn = document.getElementById('sendConfirmationCancelBtn');
+  const sendConfirmationSendBtn = document.getElementById('sendConfirmationSendBtn');
+
+  let pendingConfirmationAppt = null;
+
+  function openSendConfirmationModal(appt) {
+    closeAllActionPopups();
+    pendingConfirmationAppt = appt;
+    sendConfirmationName.textContent = `${appt.title} ${appt.name}`;
+    sendConfirmationDateTime.textContent = `${formatDateInputValue(appt.date)} · ${formatTime12h(appt.time)}`;
+    sendConfirmationPreview.value = generateAppointmentMessage(appt);
+    sendConfirmationModalOverlay.hidden = false;
+  }
+
+  function closeSendConfirmationModal() {
+    sendConfirmationModalOverlay.hidden = true;
+    pendingConfirmationAppt = null;
+  }
+
+  sendConfirmationCancelBtn.addEventListener('click', closeSendConfirmationModal);
+  sendConfirmationModalOverlay.addEventListener('click', (e) => {
+    if (e.target === sendConfirmationModalOverlay) closeSendConfirmationModal();
+  });
+
+  sendConfirmationSendBtn.addEventListener('click', () => {
+    const message = sendConfirmationPreview.value.trim();
+    if (!message || !pendingConfirmationAppt) return; // validation failure — keep popup open
+    const appt = pendingConfirmationAppt;
+    openWhatsApp(appt.mobile, message);
+    logActivity('Confirmation Sent', appt.id);
+    closeSendConfirmationModal();
+    showToast('Confirmation sent successfully.');
+  });
+
   /* ---------- Cancel Appointment (direct from patient card) ---------- */
   function cancelPatientAppointment(appt) {
     closeAllActionPopups();
@@ -2143,6 +2182,10 @@ import {
       if (!hasNext) { showToast('No upcoming appointment to remind about.'); return; }
       openSendReminderModal(patient.nextAppt);
     };
+    const doSendConfirmation = () => {
+      if (!hasNext) { showToast('No upcoming appointment to confirm.'); return; }
+      openSendConfirmationModal(patient.nextAppt);
+    };
     const doEdit = () => {
       closeAllActionPopups();
       openApptModal({ mode: 'edit', appt: editTarget });
@@ -2164,6 +2207,7 @@ import {
     actions.appendChild(buildPatientActionBtn({ icon: 'list_alt', label: 'History', variant: 'view', onClick: doViewAppointments }));
     actions.appendChild(buildPatientActionBtn({ icon: 'event_repeat', label: 'Reschedule', variant: 'reschedule', onClick: doReschedule, disabled: !hasNext || isCancelled }));
     actions.appendChild(buildPatientActionBtn({ icon: 'notifications', label: 'Remind', variant: 'reminder', onClick: doSendReminder, disabled: !hasNext }));
+    actions.appendChild(buildPatientActionBtn({ icon: 'mark_email_read', label: 'Confirmation', variant: 'confirmation', onClick: doSendConfirmation, disabled: !hasNext }));
     actions.appendChild(buildPatientActionBtn({ icon: 'edit', label: 'Edit', variant: 'edit', onClick: doEdit }));
     actions.appendChild(buildPatientActionBtn({ icon: 'event_busy', label: 'Cancel', variant: 'cancel', onClick: doCancel, disabled: !hasNext || isCancelled }));
 

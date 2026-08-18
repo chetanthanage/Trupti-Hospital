@@ -659,6 +659,27 @@
   </div>
 </div>
 
+<!-- ============ SEND CONFIRMATION MODAL ============ -->
+<div class="modal-overlay" id="sendConfirmationModalOverlay" hidden>
+  <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="sendConfirmationModalTitle">
+    <h3 class="modal__title" id="sendConfirmationModalTitle">Send Confirmation</h3>
+    <div class="cancel-confirm__patient">
+      <span class="cancel-confirm__name" id="sendConfirmationName">Patient Name</span>
+      <span class="cancel-confirm__datetime" id="sendConfirmationDateTime">Date · Time</span>
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label class="field__label" for="sendConfirmationPreview">Message Preview (editable)</label>
+      <textarea class="reminder-preview-box" id="sendConfirmationPreview" rows="10"></textarea>
+    </div>
+    <div class="btn-row btn-row--modal">
+      <button class="btn btn--grey" id="sendConfirmationCancelBtn" type="button">Cancel</button>
+      <button class="btn btn--green" id="sendConfirmationSendBtn" type="button">
+        <span class="material-symbols-rounded">send</span> Send Confirmation
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ EXPORT CSV MODAL ============ -->
 <div class="modal-overlay" id="exportModalOverlay" hidden>
   <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">

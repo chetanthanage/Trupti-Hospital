@@ -734,6 +734,7 @@ button{ cursor:pointer; }
 .patient-action--view{ background: var(--grad-secondary); box-shadow: var(--shadow-glow-blue); }
 .patient-action--reschedule{ background: var(--grad-primary); box-shadow: var(--shadow-glow-purple); }
 .patient-action--reminder{ background: var(--grad-warning); box-shadow: var(--shadow-glow-orange); }
+.patient-action--confirmation{ background: var(--grad-accent); box-shadow: var(--shadow-glow-pink); }
 .patient-action--edit{ background: var(--grad-cyan); box-shadow: var(--shadow-glow-cyan); }
 .patient-action--cancel{ background: var(--grad-danger); box-shadow: var(--shadow-glow-red); }
 .patient-action:disabled{ opacity: 0.4; cursor: not-allowed; transform:none; filter:none; }
