@@ -16,6 +16,13 @@ export const DOCTOR_NUMBER = '919370203674';
 export const CLINIC_LOCATION_URL = 'https://maps.app.goo.gl/9QFgEV1qnKZRDiTPA';
 export const DOCTOR_NAME = 'Dr. Rohini K. Patole';
 
+/* ---------- SHARED SIGN-OFF ---------- */
+const REACTION_REQUEST = `If you have seen the msg., please give a reaction.`;
+const SIGNATURE =
+  `With regards,\n` +
+  `Chetan Thanage(Reception Desk)\n` +
+  `Trupti Psychologycal Counselling Centre, Nashik`;
+
 /* ---------- PATIENT CONFIRMATION MESSAGE (used by the "Send WhatsApp" action) ---------- */
 export function generateAppointmentMessage(appt) {
   return (
@@ -29,11 +36,28 @@ export function generateAppointmentMessage(appt) {
     `Kindly arrive 5 minutes before your scheduled appointment.\n\n` +
     `If available, please carry any previous prescriptions, medical reports, or relevant documents.\n\n` +
     `We look forward to assisting you.\n\n` +
+    `${REACTION_REQUEST}\n\n` +
     `Thank you.\n\n` +
-    `With regards,\n\n` +
-    `Chetan Thanage\n` +
-    `Reception Desk\n` +
-    `Dr. Rohini K. Patole Clinic`
+    `${SIGNATURE}`
+  );
+}
+
+/* ---------- PATIENT REMINDER MESSAGE (separate from Confirmation, used by "Send Reminder" popup) ---------- */
+export function generatePatientReminderMessage(appt) {
+  return (
+    `⏰ Appointment Reminder\n\n` +
+    `Dear ${appt.title} ${appt.name},\n\n` +
+    `This is a gentle reminder of your upcoming appointment.\n\n` +
+    `👨‍⚕️ Doctor: ${DOCTOR_NAME}\n` +
+    `🗓️ Date: ${formatDateInputValue(appt.date)}\n` +
+    `⏰ Time: ${formatTime12h(appt.time)}\n` +
+    `📍 Clinic Location:\n${CLINIC_LOCATION_URL}\n\n` +
+    `Kindly arrive 5 minutes before your scheduled appointment.\n\n` +
+    `If available, please carry any previous prescriptions, medical reports, or relevant documents.\n\n` +
+    `We look forward to seeing you.\n\n` +
+    `${REACTION_REQUEST}\n\n` +
+    `Thank you.\n\n` +
+    `${SIGNATURE}`
   );
 }
 
@@ -50,10 +74,8 @@ export function generateCancellationMessage(appt, reason) {
     `We sincerely apologise for any inconvenience caused.\n\n` +
     `If you would like to book another appointment, please reply to this message or contact us. We will be happy to assist you with a new appointment.\n\n` +
     `Thank you for your understanding and cooperation.\n\n` +
-    `With regards,\n\n` +
-    `Chetan Thanage\n` +
-    `Reception Desk\n` +
-    `Dr. Rohini K. Patole Clinic`
+    `${REACTION_REQUEST}\n\n` +
+    `${SIGNATURE}`
   );
 }
 
@@ -73,10 +95,8 @@ export function generateRescheduleMessage(appt, oldDate, oldTime, newDate, newTi
     `Kindly arrive 5 minutes before your scheduled appointment.\n\n` +
     `Thank you for your understanding and cooperation.\n\n` +
     `We look forward to seeing you.\n\n` +
-    `With regards,\n\n` +
-    `Chetan Thanage\n` +
-    `Reception Desk\n` +
-    `Dr. Rohini K. Patole Clinic`
+    `${REACTION_REQUEST}\n\n` +
+    `${SIGNATURE}`
   );
 }
 

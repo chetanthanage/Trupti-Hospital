@@ -24,7 +24,7 @@ import { isValidMobile } from '../utils/validators.js';
 import {
   DOCTOR_NUMBER,
   generateAppointmentMessage, generateCancellationMessage,
-  generateRescheduleMessage, generateReminderMessage
+  generateRescheduleMessage, generateReminderMessage, generatePatientReminderMessage
 } from '../templates/appointmentTemplates.js';
 
   /* ======================================================================
@@ -1410,7 +1410,7 @@ import {
     pendingReminderAppt = appt;
     sendReminderName.textContent = `${appt.title} ${appt.name}`;
     sendReminderDateTime.textContent = `${formatDateInputValue(appt.date)} · ${formatTime12h(appt.time)}`;
-    sendReminderPreview.value = generateAppointmentMessage(appt);
+    sendReminderPreview.value = generatePatientReminderMessage(appt);
     sendReminderModalOverlay.hidden = false;
   }
 
